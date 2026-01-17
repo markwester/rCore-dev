@@ -1,6 +1,7 @@
 [package]
 name = "os"
 version = "0.1.0"
+authors = ["Qing Wang <wangqing7171@gmail.com>"]
 edition = "2024"
 
 [dependencies]

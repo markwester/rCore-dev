@@ -1,9 +1,16 @@
 #![no_std]
 #![no_main]
+// #![deny(missing_docs)]
+// #![deny(warnings)]
 
+#[macro_use]
 mod lang_items;
 mod sbi;
 mod console;
+mod sync;
+pub mod trap;
+pub mod batch;
+pub mod syscall;
 
 use core::{arch::global_asm, fmt};
 global_asm!(include_str!("entry.asm"));
@@ -21,6 +28,9 @@ pub fn rust_main() -> ! {
     clear_bss();
     println!("\x1b[31m hello world! \x1b[0m");
     panic!("Shutdown machine");
+    trap::init();
+    batch::init();
+    batch::run_next_app();
 }
 
 fn clear_bss() {
