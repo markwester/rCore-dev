@@ -5,15 +5,17 @@
 
 #[macro_use]
 mod lang_items;
-mod sbi;
-mod console;
-mod sync;
-pub mod trap;
 pub mod batch;
+mod console;
+mod sbi;
+mod sync;
 pub mod syscall;
+pub mod trap;
+mod loader;
 
-use core::{arch::global_asm, fmt};
+use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
+global_asm!(include_str!("link_app.S"));
 
 // fn info(args: ) {
 //     println!("\x1b[{}m {:?} \x1b[0m", 31, args);
@@ -27,7 +29,7 @@ global_asm!(include_str!("entry.asm"));
 pub fn rust_main() -> ! {
     clear_bss();
     println!("\x1b[31m hello world! \x1b[0m");
-    panic!("Shutdown machine");
+    // panic!("Shutdown machine");
     trap::init();
     batch::init();
     batch::run_next_app();
@@ -39,7 +41,7 @@ fn clear_bss() {
         safe fn ebss();
     }
 
-    (sbss as usize..ebss as usize).for_each(|a| {
-        unsafe { (a as *mut u8).write_volatile(0); }
+    (sbss as usize..ebss as usize).for_each(|a| unsafe {
+        (a as *mut u8).write_volatile(0);
     });
 }
