@@ -12,6 +12,8 @@ mod sync;
 pub mod syscall;
 pub mod trap;
 mod loader;
+mod task;
+pub mod config;
 
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
