@@ -1,9 +1,9 @@
+use crate::config::*;
+use crate::println;
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use core::arch::asm;
 use lazy_static::*;
-use crate::println;
-use crate::config::*;
 
 struct AppManager {
     num_app: usize,
@@ -12,32 +12,46 @@ struct AppManager {
 }
 
 #[repr(align(4096))]
+#[derive(Copy, Clone)]
 struct KernelStack {
     data: [u8; KERNEL_STACK_SIZE],
 }
 
 #[repr(align(4096))]
+#[derive(Copy, Clone)]
 struct UserStack {
     data: [u8; USER_STACK_SIZE],
 }
 
-static KERNEL_STACK: KernelStack = KernelStack {
+static KERNEL_STACK: [KernelStack; MAX_APP_NUM] = [KernelStack {
     data: [0; KERNEL_STACK_SIZE],
-};
-static USER_STACK: UserStack = UserStack {
+}; MAX_APP_NUM];
+
+static USER_STACK: [UserStack; MAX_APP_NUM] = [UserStack {
     data: [0; USER_STACK_SIZE],
-};
+}; MAX_APP_NUM];
+
+pub fn init_ctx_and_push_kstack(app_id: usize) -> usize {
+    KERNEL_STACK[app_id].push_context(TrapContext::app_init_context(
+        get_base_i(app_id),
+        USER_STACK[app_id].get_sp(),
+    ))
+}
+
+fn get_base_i(app_id: usize) -> usize {
+    APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT
+}
 
 impl KernelStack {
     fn get_sp(&self) -> usize {
         self.data.as_ptr() as usize + KERNEL_STACK_SIZE
     }
-    pub fn push_context(&self, cx: TrapContext) -> &'static mut TrapContext {
-        let cx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
+    pub fn push_context(&self, cx: TrapContext) -> usize {
+        let trap_cx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
         unsafe {
-            *cx_ptr = cx;
+            *trap_cx_ptr = cx;
         }
-        unsafe { cx_ptr.as_mut().unwrap() }
+        trap_cx_ptr as usize
     }
 }
 
@@ -120,22 +134,22 @@ pub fn print_app_info() {
     APP_MANAGER.exclusive_access().print_app_info();
 }
 
-pub fn run_next_app() -> ! {
-    let mut app_manager = APP_MANAGER.exclusive_access();
-    let current_app = app_manager.get_current_app();
-    app_manager.load_app(current_app);
-    app_manager.move_to_next_app();
-    drop(app_manager);
-    // before this we have to drop local variables related to resources manually
-    // and release the resources
-    unsafe extern "C" {
-        fn __restore(cx_addr: usize);
-    }
-    unsafe {
-        __restore(KERNEL_STACK.push_context(TrapContext::app_init_context(
-            APP_BASE_ADDRESS,
-            USER_STACK.get_sp(),
-        )) as *const _ as usize);
-    }
-    panic!("Unreachable in batch::run_current_app!");
-}
+// pub fn run_next_app() -> ! {
+//     let mut app_manager = APP_MANAGER.exclusive_access();
+//     let current_app = app_manager.get_current_app();
+//     app_manager.load_app(current_app);
+//     app_manager.move_to_next_app();
+//     drop(app_manager);
+//     // before this we have to drop local variables related to resources manually
+//     // and release the resources
+//     unsafe extern "C" {
+//         fn __restore(cx_addr: usize);
+//     }
+//     unsafe {
+//         __restore(KERNEL_STACK.push_context(TrapContext::app_init_context(
+//             APP_BASE_ADDRESS,
+//             USER_STACK.get_sp(),
+//         )) as *const _ as usize);
+//     }
+//     panic!("Unreachable in batch::run_current_app!");
+// }

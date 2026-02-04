@@ -34,7 +34,8 @@ pub fn rust_main() -> ! {
     // panic!("Shutdown machine");
     trap::init();
     batch::init();
-    batch::run_next_app();
+    task::run_next_task();
+    panic!("Unreachable in rust_main!");
 }
 
 fn clear_bss() {
