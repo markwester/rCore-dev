@@ -14,29 +14,11 @@ pub mod trap;
 mod loader;
 mod task;
 pub mod config;
+mod timer;
 
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
-
-// fn info(args: ) {
-//     println!("\x1b[{}m {:?} \x1b[0m", 31, args);
-// }
-
-// fn warn(args: fmt::Alignments) {
-//     println!("\x1b[{}m {:?} \x1b[0m", 93, args);
-// }
-
-#[unsafe(no_mangle)]
-pub fn rust_main() -> ! {
-    clear_bss();
-    println!("\x1b[31m hello world! \x1b[0m");
-    // panic!("Shutdown machine");
-    trap::init();
-    batch::init();
-    task::run_next_task();
-    panic!("Unreachable in rust_main!");
-}
 
 fn clear_bss() {
     unsafe extern "C" {
@@ -48,3 +30,18 @@ fn clear_bss() {
         (a as *mut u8).write_volatile(0);
     });
 }
+
+#[unsafe(no_mangle)]
+pub fn rust_main() -> ! {
+    clear_bss();
+    println!("\x1b[31m hello rCore! \x1b[0m");
+    trap::init();
+    loader::init();
+    loader::load_apps();
+    trap::enable_timer_interrupt();
+    timer::set_next_tick();
+    task::run_first_task();
+    panic!("Unreachable in rust_main!");
+}
+
+

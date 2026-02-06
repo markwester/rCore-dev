@@ -7,9 +7,9 @@ use core::panic;
 use super::config::MAX_APP_NUM;
 use super::loader::get_num_app;
 use super::sync::UPSafeCell;
+use crate::batch::init_ctx_and_push_kstack;
 use context::TaskContext;
 use task::{TaskControlBlock, TaskStatus};
-use crate::batch::init_ctx_and_push_kstack;
 
 use lazy_static::lazy_static;
 
@@ -71,10 +71,7 @@ impl TaskManager {
             let next_task_cx_ptr = &mut inner.tasks[next].task_cx as *mut TaskContext;
             drop(inner);
             unsafe {
-                switch::__switch(
-                    current_task_cx_ptr,
-                    next_task_cx_ptr,
-                );
+                switch::__switch(current_task_cx_ptr, next_task_cx_ptr);
             }
             // return to user mode
         } else {
@@ -93,9 +90,20 @@ impl TaskManager {
         }
         None
     }
+
+    fn run_first_task(&self) -> ! {
+        let mut inner = self.inner.exclusive_access();
+        inner.tasks[0].task_status = TaskStatus::Running;
+        inner.current_task = 0;
+        let first_task_cx_ptr = &mut inner.tasks[0].task_cx as *mut TaskContext;
+        drop(inner);
+        let mut unused_task_cx = TaskContext::zeroed();
+        unsafe {
+            switch::__switch(&mut unused_task_cx as *mut TaskContext, first_task_cx_ptr);
+        }
+        panic!("unreachable in run_first_task!");
+    }
 }
-
-
 
 pub fn mark_current_suspended() {
     TASK_MANAGER.mark_current_suspended();
@@ -107,6 +115,10 @@ pub fn mark_current_exited() {
 
 pub fn run_next_task() {
     TASK_MANAGER.run_next_task();
+}
+
+pub fn run_first_task() {
+    TASK_MANAGER.run_first_task();
 }
 
 pub fn suspend_current_and_run_next() {
