@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 // #![deny(missing_docs)]
-// #![deny(warnings)]
+#![deny(warnings)]
 
 #[macro_use]
 mod lang_items;

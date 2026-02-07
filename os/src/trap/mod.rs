@@ -31,6 +31,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let stval = stval::read();
     match scause.cause() {
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            println!("[kernel] SupervisorTimer interrupt.");
             set_next_tick();
             suspend_current_and_run_next();
         }

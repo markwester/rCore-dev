@@ -10,6 +10,9 @@ use super::sync::UPSafeCell;
 use crate::batch::init_ctx_and_push_kstack;
 use context::TaskContext;
 use task::{TaskControlBlock, TaskStatus};
+use switch::__switch;
+use crate::println;
+use crate::sbi::shutdown;
 
 use lazy_static::lazy_static;
 
@@ -63,6 +66,7 @@ impl TaskManager {
 
     fn run_next_task(&self) {
         if let Some(next) = self.find_next_task() {
+            println!("run_next_task run task idx {}", next);
             let mut inner = self.inner.exclusive_access();
             inner.tasks[next].task_status = TaskStatus::Running;
             let current = inner.current_task;
@@ -71,24 +75,33 @@ impl TaskManager {
             let next_task_cx_ptr = &mut inner.tasks[next].task_cx as *mut TaskContext;
             drop(inner);
             unsafe {
-                switch::__switch(current_task_cx_ptr, next_task_cx_ptr);
+                __switch(current_task_cx_ptr, next_task_cx_ptr);
             }
             // return to user mode
         } else {
-            panic!("No ready task to run, All applications completed!");
+            println!("No ready task to run, All applications completed!");
+            shutdown(false);
         }
     }
 
+    // fn find_next_task(&self) -> Option<usize> {
+    //     let inner = self.inner.exclusive_access();
+    //     let mut next = (inner.current_task + 1) % self.num_app;
+    //     for _ in 0..self.num_app {
+    //         if inner.tasks[next].task_status == TaskStatus::Ready {
+    //             return Some(next);
+    //         }
+    //         next = (next + 1) % self.num_app;
+    //     }
+    //     None
+    // }
+
     fn find_next_task(&self) -> Option<usize> {
         let inner = self.inner.exclusive_access();
-        let mut next = (inner.current_task + 1) % self.num_app;
-        for _ in 0..self.num_app {
-            if inner.tasks[next].task_status == TaskStatus::Ready {
-                return Some(next);
-            }
-            next = (next + 1) % self.num_app;
-        }
-        None
+        let current = inner.current_task;
+        (current + 1..current + self.num_app + 1)
+            .map(|id| id % self.num_app)
+            .find(|id| inner.tasks[*id].task_status == TaskStatus::Ready)
     }
 
     fn run_first_task(&self) -> ! {
@@ -99,7 +112,7 @@ impl TaskManager {
         drop(inner);
         let mut unused_task_cx = TaskContext::zeroed();
         unsafe {
-            switch::__switch(&mut unused_task_cx as *mut TaskContext, first_task_cx_ptr);
+            __switch(&mut unused_task_cx as *mut TaskContext, first_task_cx_ptr);
         }
         panic!("unreachable in run_first_task!");
     }

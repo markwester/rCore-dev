@@ -3,7 +3,10 @@
 .macro SAVE_GP n
     sd x\n, \n*8(sp)
 .endm
-
+    .section .text
+    .globl __alltraps
+    .globl __restore
+    .align 2
 .align 2
 __alltraps:
     csrrw sp, sscratch, sp
@@ -41,7 +44,7 @@ __alltraps:
 __restore:
     # case1: start running app by __restore
     # case2: back to U after handling trap
-    mv sp, a0
+    # mv sp, a0
     # now sp->kernel stack(after allocated), sscratch->user stack
     # restore sstatus/sepc
     ld t0, 32*8(sp)

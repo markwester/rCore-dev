@@ -14,6 +14,6 @@ pub fn shutdown(failure: bool) -> ! {
 }
 
 pub fn set_timer(timer_value: usize) {
-    sbi_rt::set_timer(timer_value as u64);
+    sbi_rt::set_timer(timer_value as _);
 }
 

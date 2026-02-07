@@ -1,8 +1,5 @@
 use crate::config::*;
 use crate::trap::TrapContext;
-// use core::arch::global_asm;
-
-// global_asm!(include_str!("link_app.S"));
 
 #[repr(align(4096))]
 #[derive(Copy, Clone)]
