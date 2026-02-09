@@ -4,9 +4,9 @@
 #![deny(warnings)]
 
 #[macro_use]
+mod console;
 mod lang_items;
 pub mod batch;
-mod console;
 mod sbi;
 mod sync;
 pub mod syscall;

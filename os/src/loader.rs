@@ -1,5 +1,4 @@
 use crate::config::{APP_BASE_ADDRESS, APP_SIZE_LIMIT};
-use crate::println;
 use core::arch::asm;
 
 fn get_base_i(app_id: usize) -> usize {

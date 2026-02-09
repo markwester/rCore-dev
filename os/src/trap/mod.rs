@@ -1,8 +1,6 @@
 mod context;
 
 pub use context::TrapContext;
-
-use crate::println;
 use crate::syscall::syscall;
 use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
 use crate::timer::set_next_tick;
@@ -31,7 +29,6 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let stval = stval::read();
     match scause.cause() {
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            println!("[kernel] SupervisorTimer interrupt.");
             set_next_tick();
             suspend_current_and_run_next();
         }

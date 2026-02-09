@@ -2,8 +2,8 @@
 #![feature(linkage)]
 
 #[macro_use]
-mod syscall;
 pub mod console;
+mod syscall;
 mod lang_items;
 
 #[unsafe(no_mangle)]
