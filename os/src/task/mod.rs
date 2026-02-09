@@ -4,9 +4,8 @@ mod task;
 
 use core::panic;
 use super::config::MAX_APP_NUM;
-use super::loader::get_num_app;
+use super::loader::{get_num_app, init_ctx_and_push_kstack};
 use super::sync::UPSafeCell;
-use crate::batch::init_ctx_and_push_kstack;
 use context::TaskContext;
 use task::{TaskControlBlock, TaskStatus};
 use switch::__switch;

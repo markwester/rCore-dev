@@ -6,7 +6,6 @@
 #[macro_use]
 mod console;
 mod lang_items;
-pub mod batch;
 mod sbi;
 mod sync;
 pub mod syscall;
