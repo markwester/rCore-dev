@@ -20,6 +20,8 @@ pub mod mm;
 use core::arch::global_asm;
 use mm::heap_allocator::init_heap;
 extern crate alloc;
+#[macro_use]
+extern crate bitflags;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
