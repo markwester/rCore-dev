@@ -7,3 +7,4 @@ pub const CLOCK_FREQ: usize = 12500000;
 pub const KERNEL_HEAP_SIZE: usize = 1024 * 1024 * 10; // 10 MiB
 pub const PAGE_SIZE_BITS: usize = 12;
 pub const PAGE_SIZE: usize = 1 << PAGE_SIZE_BITS;
+pub const MEMORY_END: usize = 0x80800000;
