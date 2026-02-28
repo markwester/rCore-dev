@@ -10,6 +10,11 @@ SECTIONS
     stext = .;
     .text : {
         *(.text.entry)
+        /* align trampoline to smooth when address space switching in trap.S */
+        . = ALIGN(4K);
+        strampoline = .;
+        *(.text.trampoline);
+        . = ALIGN(4K);
         *(.text .text.*)
     }
     . = ALIGN(4K);

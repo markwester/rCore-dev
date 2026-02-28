@@ -45,6 +45,14 @@ impl PageTableEntry {
     pub fn is_valid(&self) -> bool {
         self.flags().contains(PTEFlags::V)
     }
+
+    pub fn is_writable(&self) -> bool {
+        self.flags().contains(PTEFlags::W)
+    }
+
+    pub fn is_executable(&self) -> bool {
+        self.flags().contains(PTEFlags::X)
+    }
 }
 
 pub struct PageTable {
@@ -117,5 +125,9 @@ impl PageTable {
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.find_pte(vpn)
             .map(|pte| {pte.clone()})
+    }
+
+    pub fn token(&self) -> usize {
+        8usize << 60 | self.root_ppn.0
     }
 }

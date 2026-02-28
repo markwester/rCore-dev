@@ -6,6 +6,11 @@ use alloc::vec::Vec;
 use crate::config::{MEMORY_END, USER_STACK_SIZE, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT};
 use xmas_elf::ElfFile;
 use crate::mm::page_table::PTEFlags;
+use lazy_static::*;
+use alloc::sync::Arc;
+use crate::sync::UPSafeCell;
+use core::arch::asm;
+use riscv::register::satp;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MapType {
@@ -254,5 +259,39 @@ impl MemorySet {
         ), None);
         (memory_set, user_stack_top, elf.header.pt2.entry_point() as usize)
     }
+
+    pub fn activate(&self) {
+        let satp = self.page_table.token();
+        unsafe {
+            satp::write(satp);
+            // flush TLB, which can be memory barrier
+            asm!("sfence.vma");
+        }
+    }
 }
 
+lazy_static! {
+    pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> = Arc::new(unsafe {
+        UPSafeCell::new(MemorySet::new_kernel()
+    )});
+}
+
+pub fn remap_test() {
+    let kernel_space = KERNEL_SPACE.exclusive_access();
+    let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
+    let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
+    let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
+    assert_eq!(
+        kernel_space.page_table.translate(mid_text.floor()).unwrap().is_writable(),
+        false
+    );
+    assert_eq!(
+        kernel_space.page_table.translate(mid_rodata.floor()).unwrap().is_writable(),
+        false,
+    );
+    assert_eq!(
+        kernel_space.page_table.translate(mid_data.floor()).unwrap().is_executable(),
+        false,
+    );
+    println!("remap_test passed!");
+}
