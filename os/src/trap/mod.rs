@@ -1,4 +1,4 @@
-mod context;
+pub mod context;
 
 pub use context::TrapContext;
 use crate::syscall::syscall;
@@ -11,6 +11,9 @@ use riscv::register::{
     stval, stvec,
 };
 use riscv::register::sie;
+use crate::task::{current_trap_cx, current_user_token};
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
+use core::arch::asm;
 
 global_asm!(include_str!("trap.S"));
 
@@ -23,8 +26,58 @@ pub fn init() {
     }
 }
 
+fn set_user_trap_entry() {
+    unsafe {
+        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+    }
+}
+
+fn set_kernel_trap_entry() {
+    unsafe {
+        stvec::write(trap_from_kernel as usize, TrapMode::Direct);
+    }
+}
+
 #[unsafe(no_mangle)]
-pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+pub fn trap_from_kernel() -> ! {
+    panic!("a trap from kernel!");
+}
+
+#[unsafe(no_mangle)]
+pub fn trap_return() -> ! {
+    set_user_trap_entry();
+    let trap_cx_ptr = TRAP_CONTEXT;
+    let user_satp = current_user_token();
+    unsafe extern "C" {
+        fn __alltraps();
+        fn __restore();
+    }
+    let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
+    unsafe {
+        asm!(
+            /*
+             * 首先需要使用 fence.i 指令清空指令缓存 i-cache 。这是因为，在内核中进行的一些操作
+             * 可能导致一些原先存放某个应用代码的物理页帧如今用来存放数据或者是其他应用的代码，
+             * i-cache 中可能还保存着该物理页帧的错误快照。因此我们直接将整个 i-cache 清空避免错误。
+             * 接着使用 jr 指令完成了跳转到 __restore 的任务。
+             *
+             * 不理解？？？ 可能导致一些原先存放某个应用代码的物理页帧如今用来存放数据或者是其他应用的代码，
+             * i-cache 中可能还保存着该物理页帧的错误快照
+             */
+            "fence.i",
+            "jr {restore_va}",
+            restore_va = in(reg) restore_va,
+            in("a0") trap_cx_ptr,
+            in("a1") user_satp,
+            options(noreturn)
+        );
+    }
+}
+
+#[unsafe(no_mangle)]
+pub fn trap_handler() -> ! {
+    set_kernel_trap_entry();
+    let cx = current_trap_cx();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
@@ -52,7 +105,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
-    cx
+    trap_return();
 }
 
 pub fn enable_timer_interrupt() {
@@ -60,3 +113,4 @@ pub fn enable_timer_interrupt() {
         sie::set_stimer();
     }
 }
+

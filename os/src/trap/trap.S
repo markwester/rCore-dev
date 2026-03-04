@@ -39,7 +39,8 @@ __alltraps:
     jr t1
 
 __restore:
-    # a0: *TrapContext in user space(Constant); a1: user space token
+    # a0: *TrapContext in user space(Constant)
+    # a1: user space token
     # switch to user space
     csrw satp, a1
     sfence.vma

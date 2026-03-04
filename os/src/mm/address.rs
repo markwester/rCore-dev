@@ -174,6 +174,10 @@ impl VirtPageNum {
         }
         idx
     }
+
+    pub fn step(&mut self) {
+        self.0 += 1;
+    }
 }
 
 pub trait StepByOne {

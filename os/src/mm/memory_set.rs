@@ -1,11 +1,12 @@
-use crate::mm::address::{VirtAddr, VirtPageNum, PhysPageNum, VPNRange};
+use crate::mm::address::{VirtAddr, VirtPageNum, PhysPageNum, VPNRange, PhysAddr};
 use crate::mm::frame_allocator::{FrameTracker, frame_alloc};
 use crate::mm::page_table::PageTable;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+// use riscv::addr::Page;
 use crate::config::{MEMORY_END, USER_STACK_SIZE, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT};
-use xmas_elf::ElfFile;
-use crate::mm::page_table::PTEFlags;
+// use xmas_elf::ElfFile;
+use crate::mm::page_table::{PTEFlags, PageTableEntry};
 use lazy_static::*;
 use alloc::sync::Arc;
 use crate::sync::UPSafeCell;
@@ -154,6 +155,15 @@ impl MemorySet {
             None,
         );
     }
+
+    fn map_trampoline(&mut self) {
+        self.page_table.map(
+            VirtAddr::from(TRAMPOLINE).into(),
+            PhysAddr::from(strampoline as usize).into(),
+            PTEFlags::R | PTEFlags::X,
+        );
+    }
+
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare();
@@ -267,6 +277,14 @@ impl MemorySet {
             // flush TLB, which can be memory barrier
             asm!("sfence.vma");
         }
+    }
+
+    pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
+        self.page_table.translate(vpn)
+    }
+
+    pub fn token(&self) -> usize {
+        self.page_table.token()
     }
 }
 
