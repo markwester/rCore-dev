@@ -2,9 +2,8 @@ mod context;
 mod switch;
 mod task;
 
-use super::config::MAX_APP_NUM;
 use super::loader::get_app_data;
-use super::loader::{get_num_app, init_ctx_and_push_kstack};
+use super::loader::get_num_app;
 use super::sync::UPSafeCell;
 use crate::sbi::shutdown;
 use crate::trap::context::TrapContext;

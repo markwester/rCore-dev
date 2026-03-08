@@ -18,16 +18,6 @@ impl TaskContext {
         }
     }
 
-    pub fn goto_restore(kstack_sp: usize) -> Self {
-        unsafe extern "C" {
-            fn __restore(cx_addr: usize);
-        }
-        Self {
-            ra: __restore as usize,
-            sp: kstack_sp,
-            s: [0; 12],
-        }
-    }
     /*
      * switch to new task B
      * task A --__switch--> trap_return -> task B
