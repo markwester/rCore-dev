@@ -1,6 +1,7 @@
 mod context;
 mod switch;
 mod task;
+mod pid;
 
 use super::loader::get_app_data;
 use super::loader::get_num_app;
