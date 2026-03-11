@@ -1,3 +1,5 @@
+//! Task Control Block (TCB) implementation
+
 use super::context::TaskContext;
 use super::pid::{KernelStack, PidHandle, pid_alloc};
 use crate::config::{TRAP_CONTEXT, kernel_stack_position};
@@ -8,6 +10,7 @@ use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
+use core::cell::RefMut;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
@@ -52,23 +55,17 @@ impl TaskControlBlockInner {
 }
 
 impl TaskControlBlock {
-    pub fn new(elf_data: &[u8], app_id: usize) -> Self {
+    pub fn new(elf_data: &[u8]) -> Self {
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
-        // map a kernel-stack in kernel space
-        let (kernel_stack_bottom, kernel_stack_top) = kernel_stack_position(app_id);
-        KERNEL_SPACE.exclusive_access().insert_framed_area(
-            kernel_stack_bottom.into(),
-            kernel_stack_top.into(),
-            MapPermission::R | MapPermission::W,
-        );
         let pid_handle = pid_alloc();
         let kernel_stack = KernelStack::new(&pid_handle);
-        let task_control_block: TaskControlBlock = Self {
+        let kernel_stack_top = kernel_stack.get_top();
+        let tcb: TaskControlBlock = Self {
             pid: pid_handle,
             kernel_stack,
             inner: unsafe {
@@ -85,7 +82,7 @@ impl TaskControlBlock {
             },
         };
         // prepare TrapContext in user space
-        let trap_cx = task_control_block
+        let trap_cx = tcb
             .inner
             .exclusive_access()
             .trap_cx_ppn
@@ -97,7 +94,7 @@ impl TaskControlBlock {
             kernel_stack_top,
             trap_handler as usize,
         );
-        task_control_block
+        tcb
     }
 
     pub fn exec(&self, elf_data: &[u8]) {
@@ -127,6 +124,7 @@ impl TaskControlBlock {
         );
         // **** release inner automatically
     }
+
     pub fn fork(self: &Arc<Self>) -> Arc<Self> {
         // ---- access parent PCB exclusively
         let mut parent_inner = self.inner_exclusive_access();
@@ -167,7 +165,12 @@ impl TaskControlBlock {
         // ---- release parent PCB automatically
         // **** release children PCB automatically
     }
+
     pub fn getpid(&self) -> usize {
         self.pid.0
+    }
+
+    pub fn inner_exclusive_access(&self) -> RefMut<'_, TaskControlBlockInner> {
+        self.inner.exclusive_access()
     }
 }
