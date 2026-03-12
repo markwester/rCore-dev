@@ -1,26 +1,25 @@
 mod context;
+pub mod manager;
+mod pid;
+pub mod processor;
 mod switch;
 mod task;
-mod pid;
-mod manager;
-mod processor;
 
 // use super::loader::get_app_data;
 // use super::loader::get_num_app;
 // use super::sync::UPSafeCell;
 // use crate::sbi::shutdown;
-// use crate::trap::context::TrapContext;
+use crate::trap::context::TrapContext;
 // use alloc::vec::Vec;
 use context::TaskContext;
 // use core::panic;
-use lazy_static::lazy_static;
-use switch::__switch;
-use task::{TaskControlBlock, TaskStatus};
-use alloc::sync::Arc;
 use crate::{loader::get_app_data_by_name, task::processor::current_task};
+use alloc::sync::Arc;
+use lazy_static::lazy_static;
 use manager::{TASK_MANAGER, enqueue_task};
 use processor::schedule;
-
+use switch::__switch;
+use task::{TaskControlBlock, TaskStatus};
 
 pub fn mark_current_suspended() {
     TASK_MANAGER.exclusive_access().mark_current_suspended();
@@ -55,18 +54,24 @@ pub fn suspend_current_and_run_next() {
 //     run_next_task();
 // }
 
-// pub fn current_user_token() -> usize {
-//     TASK_MANAGER.get_current_token()
-// }
+pub fn current_user_token() -> usize {
+    current_task()
+        .unwrap()
+        .inner_exclusive_access()
+        .get_user_token()
+}
 
-// pub fn current_trap_cx() -> &'static mut TrapContext {
-//     TASK_MANAGER.get_current_trap_cx()
-// }
+pub fn current_trap_cx() -> &'static mut TrapContext {
+    current_task()
+        .unwrap()
+        .inner_exclusive_access()
+        .get_trap_cx()
+}
 
 lazy_static! {
-    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(
-        TaskControlBlock::new(get_app_data_by_name("initproc").unwrap())
-    );
+    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(TaskControlBlock::new(
+        get_app_data_by_name("initproc").unwrap()
+    ));
 }
 
 pub fn add_initproc() {

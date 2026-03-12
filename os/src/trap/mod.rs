@@ -77,7 +77,6 @@ pub fn trap_return() -> ! {
 #[unsafe(no_mangle)]
 pub fn trap_handler() -> ! {
     set_kernel_trap_entry();
-    let cx = current_trap_cx();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
@@ -86,8 +85,14 @@ pub fn trap_handler() -> ! {
             suspend_current_and_run_next();
         }
         Trap::Exception(Exception::UserEnvCall) => {
+            // jump to next instruction anyway
+            let mut cx = current_trap_cx();
             cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+            // get system call return value
+            let result = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]);
+            // cx is changed during sys_exec, so we have to call it again
+            cx = current_trap_cx();
+            cx.x[10] = result as usize;
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] PageFault in application, kernel killed it.");

@@ -122,7 +122,7 @@ impl TaskControlBlock {
             self.kernel_stack.get_top(),
             trap_handler as usize,
         );
-        // **** release inner automatically
+        // **** stop exclusively accessing inner automatically
     }
 
     pub fn fork(self: &Arc<Self>) -> Arc<Self> {
@@ -138,7 +138,7 @@ impl TaskControlBlock {
         let pid_handle = pid_alloc();
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
-        let task_control_block = Arc::new(TaskControlBlock {
+        let tcb = Arc::new(TaskControlBlock {
             pid: pid_handle,
             kernel_stack,
             inner: unsafe {
@@ -155,15 +155,14 @@ impl TaskControlBlock {
             },
         });
         // add child
-        parent_inner.children.push(task_control_block.clone());
+        parent_inner.children.push(tcb.clone());
         // modify kernel_sp in trap_cx
         // **** access children PCB exclusively
-        let trap_cx = task_control_block.inner_exclusive_access().get_trap_cx();
+        let trap_cx = tcb.inner_exclusive_access().get_trap_cx();
         trap_cx.kernel_sp = kernel_stack_top;
         // return
-        task_control_block
-        // ---- release parent PCB automatically
-        // **** release children PCB automatically
+        tcb
+        // ---- stop exclusively accessing parent/children PCB automatically
     }
 
     pub fn getpid(&self) -> usize {

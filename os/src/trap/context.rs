@@ -4,7 +4,7 @@ use riscv::register::sstatus::{self, SPP, Sstatus};
 pub struct TrapContext {
     pub x: [usize; 32],
     pub sstatus: Sstatus,
-    pub sepc: usize,
+    pub sepc: usize,        // last addr of ins when trap
     pub kernel_satp: usize, // the PA of kernel page table base
     pub kernel_sp: usize,
     pub trap_handler: usize,
