@@ -4,6 +4,7 @@ pub mod page_table;
 mod frame_allocator;
 pub mod memory_set;
 pub use memory_set::KERNEL_SPACE;
+pub use memory_set::remap_test;
 
 pub fn init() {
     heap_allocator::init_heap();

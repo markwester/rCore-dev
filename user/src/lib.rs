@@ -2,6 +2,7 @@
 
 #![no_std]
 #![feature(linkage)]
+#![feature(alloc_error_handler)]
 
 #[macro_use]
 pub mod console;

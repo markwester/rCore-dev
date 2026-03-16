@@ -134,23 +134,12 @@ impl PageTable {
 
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
         // why va.floor
-        let ppn = self.translate(VirtPageNum::from(va)).unwrap().ppn;
+        let ppn = self.translate(VirtPageNum::from(va)).unwrap().ppn();
         let pa: PhysAddr = ppn.into();
         let pa_usize: usize = pa.into();
         let offset = va.page_offset();
         Some((pa_usize + offset).into())
     }
-
-    // pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
-    //     self.find_pte(va.clone().floor()).map(|pte| {
-    //         //println!("translate_va:va = {:?}", va);
-    //         let aligned_pa: PhysAddr = pte.ppn().into();
-    //         //println!("translate_va:pa_align = {:?}", aligned_pa);
-    //         let offset = va.page_offset();
-    //         let aligned_pa_usize: usize = aligned_pa.into();
-    //         (aligned_pa_usize + offset).into()
-    //     })
-    // }
 
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
@@ -193,4 +182,10 @@ pub fn copy_from_user_str(token: usize, ptr: *const u8) -> String {
         }
     }
     ret_str
+}
+
+pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
+    let pgtbl = PageTable::from_token(token);
+    let va = ptr as usize;
+    pgtbl.translate_va(VirtAddr::from(va)).unwrap().get_mut()
 }

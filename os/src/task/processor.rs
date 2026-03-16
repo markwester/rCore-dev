@@ -52,7 +52,7 @@ pub fn current_task() -> Option<Arc<TaskControlBlock>> {
 }
 
 pub fn current_user_token() -> usize {
-    let task = current_task().unwrap();
+    let task: Arc<TaskControlBlock> = current_task().unwrap();
     let token = task.inner_exclusive_access().get_user_token();
     token
 }

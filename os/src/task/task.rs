@@ -2,9 +2,9 @@
 
 use super::context::TaskContext;
 use super::pid::{KernelStack, PidHandle, pid_alloc};
-use crate::config::{TRAP_CONTEXT, kernel_stack_position};
+use crate::config::TRAP_CONTEXT;
 use crate::mm::address::{PhysPageNum, VirtAddr};
-use crate::mm::memory_set::{KERNEL_SPACE, MapPermission, MemorySet};
+use crate::mm::memory_set::{KERNEL_SPACE, MemorySet};
 use crate::sync::UPSafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
@@ -17,7 +17,7 @@ pub enum TaskStatus {
     // UnInit, // 未初始化
     Ready,   // 准备运行
     Running, // 正在运行
-    Exited,  // 已退出
+    // Exited,  // 已退出
     Zombie,  // 僵尸状态，已退出但父进程尚未回收
 }
 

@@ -1,19 +1,20 @@
 pub mod context;
 
-pub use context::TrapContext;
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
-use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
+use crate::task::{
+    current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next,
+};
 use crate::timer::set_next_tick;
+pub use context::TrapContext;
+use core::arch::asm;
 use core::arch::global_asm;
+use riscv::register::sie;
 use riscv::register::{
     mtvec::TrapMode,
-    scause::{self, Exception, Trap, Interrupt},
+    scause::{self, Exception, Interrupt, Trap},
     stval, stvec,
 };
-use riscv::register::sie;
-use crate::task::{current_trap_cx, current_user_token};
-use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
-use core::arch::asm;
 
 global_asm!(include_str!("trap.S"));
 
@@ -96,11 +97,11 @@ pub fn trap_handler() -> ! {
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] PageFault in application, kernel killed it.");
-            exit_current_and_run_next();
+            exit_current_and_run_next(-2);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
-            exit_current_and_run_next();
+            exit_current_and_run_next(-3);
         }
         _ => {
             panic!(
@@ -118,4 +119,3 @@ pub fn enable_timer_interrupt() {
         sie::set_stimer();
     }
 }
-

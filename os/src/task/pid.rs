@@ -83,6 +83,7 @@ impl KernelStack {
         Self { pid: pid_handle.0 }
     }
 
+    #[allow(unused)]
     pub fn push_on_top<T>(&self, value: T) -> *mut T
     where
         T: Sized,

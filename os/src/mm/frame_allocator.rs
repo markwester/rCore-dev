@@ -67,7 +67,7 @@ lazy_static! {
 
 pub fn init_frame_allocator() {
     unsafe extern "C" {
-        fn ekernel();
+        safe fn ekernel();
     }
     FRAME_ALLOCATOR
         .exclusive_access()
