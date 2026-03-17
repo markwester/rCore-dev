@@ -6,8 +6,11 @@
 #[macro_use]
 extern crate user_lib;
 
+extern crate alloc;
+
 use user_lib::console::getchar;
 use alloc::string::String;
+use user_lib::{exec, fork, waitpid};
 
 const LF: u8 = 0x0au8;
 const CR: u8 = 0x0du8;
@@ -58,5 +61,4 @@ pub fn main() -> i32 {
             line.clear();
         }
     }
-    unreachable!();
 }

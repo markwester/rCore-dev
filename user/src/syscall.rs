@@ -13,10 +13,15 @@ fn syscall(id: usize, args: [usize; 3]) -> isize {
     ret
 }
 
+const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_GET_TIME: usize = 169;
+const SYSCALL_GETPID: usize = 172;
+const SYSCALL_FORK: usize = 220;
+const SYSCALL_EXEC: usize = 221;
+const SYSCALL_WAITPID: usize = 260;
 
 /// 功能：将内存中缓冲区中的数据写入文件。
 /// 参数：`fd` 表示待写入文件的文件描述符；
@@ -33,8 +38,9 @@ pub fn sys_write(fd: usize, buffer: &[u8]) -> isize {
 /// 参数：`exit_code` 表示应用程序的返回值。
 /// 返回值：该系统调用不应该返回。
 /// syscall ID：93
-pub fn sys_exit(xstate: i32) -> isize {
-    syscall(SYSCALL_EXIT, [xstate as usize, 0, 0])
+pub fn sys_exit(xstate: i32) -> ! {
+    syscall(SYSCALL_EXIT, [xstate as usize, 0, 0]);
+    unreachable!();
 }
 
 /// 功能：应用主动交出 CPU 所有权并切换到其他应用。
@@ -51,7 +57,9 @@ pub fn sys_get_time() -> isize {
 /// 功能：当前进程 fork 出来一个子进程。
 /// 返回值：对于子进程返回 0，对于当前进程则返回子进程的 PID 。
 /// syscall ID：220
-pub fn sys_fork() -> isize;
+pub fn sys_fork() -> isize{
+    syscall(SYSCALL_FORK, [0, 0, 0])
+}
 
 /// 功能：当前进程等待一个子进程变为僵尸进程，回收其全部资源并收集其返回值。
 /// 参数：pid 表示要等待的子进程的进程 ID，如果为 -1 的话表示等待任意一个子进程；
@@ -59,13 +67,17 @@ pub fn sys_fork() -> isize;
 /// 返回值：如果要等待的子进程不存在则返回 -1；否则如果要等待的子进程均未结束则返回 -2；
 /// 否则返回结束的子进程的进程 ID。
 /// syscall ID：260
-pub fn sys_waitpid(pid: isize, exit_code: *mut i32) -> isize;
+pub fn sys_waitpid(pid: isize, exit_code: *mut i32) -> isize {
+    syscall(SYSCALL_WAITPID, [pid as usize, exit_code as usize, 0])
+}
 
 /// 功能：将当前进程的地址空间清空并加载一个特定的可执行文件，返回用户态后开始它的执行。
 /// 参数：path 给出了要加载的可执行文件的名字；
 /// 返回值：如果出错的话（如找不到名字相符的可执行文件）则返回 -1，否则不应该返回。
 /// syscall ID：221
-pub fn sys_exec(path: &str) -> isize;
+pub fn sys_exec(path: &str) -> isize {
+    syscall(SYSCALL_EXEC, [path.as_ptr() as usize, 0, 0])
+}
 
 /// 功能：从文件中读取一段内容到缓冲区。
 /// 参数：fd 是待读取文件的文件描述符，切片 buffer 则给出缓冲区。

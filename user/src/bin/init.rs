@@ -13,7 +13,7 @@ use user_lib::{
     yield_,
 };
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn main() -> i32 {
     if fork() == 0 {
         exec("user_shell\0");
