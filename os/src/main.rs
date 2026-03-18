@@ -26,6 +26,9 @@ extern crate bitflags;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
 
+#[path = "boards/qemu.rs"]
+mod board;
+
 fn clear_bss() {
     unsafe extern "C" {
         safe fn sbss();

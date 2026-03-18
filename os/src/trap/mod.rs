@@ -19,12 +19,7 @@ use riscv::register::{
 global_asm!(include_str!("trap.S"));
 
 pub fn init() {
-    unsafe extern "C" {
-        fn __alltraps();
-    }
-    unsafe {
-        stvec::write(__alltraps as usize, TrapMode::Direct);
-    }
+    set_kernel_trap_entry();
 }
 
 fn set_user_trap_entry() {
@@ -40,8 +35,10 @@ fn set_kernel_trap_entry() {
 }
 
 #[unsafe(no_mangle)]
-pub fn trap_from_kernel() -> ! {
-    panic!("a trap from kernel!");
+pub fn trap_from_kernel() {
+    let scause = scause::read();
+    let stval = stval::read();
+    panic!("a trap from kernel: {:?}, stval: {:#x}", scause.cause(), stval);
 }
 
 #[unsafe(no_mangle)]

@@ -1,9 +1,9 @@
-use crate::sync::UPSafeCell;
-use lazy_static::lazy_static;
-use crate::mm::address::{PhysAddr, PhysPageNum};
 use crate::config::MEMORY_END;
+use crate::mm::address::{PhysAddr, PhysPageNum};
+use crate::sync::UPSafeCell;
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};
+use lazy_static::lazy_static;
 
 trait FrameAllocator {
     fn new() -> Self;
@@ -12,8 +12,8 @@ trait FrameAllocator {
 }
 
 pub struct StackFrameAllocator {
-    current: usize,  //空闲内存的起始物理页号
-    end: usize,      //空闲内存的结束物理页号
+    current: usize, //空闲内存的起始物理页号
+    end: usize,     //空闲内存的结束物理页号
     recycled: Vec<usize>,
 }
 
@@ -40,10 +40,7 @@ impl FrameAllocator for StackFrameAllocator {
     fn dealloc(&mut self, ppn: PhysPageNum) {
         let ppn = ppn.0;
         // validity check
-        if ppn >= self.current || self.recycled
-            .iter()
-            .find(|&v| {*v == ppn})
-            .is_some() {
+        if ppn >= self.current || self.recycled.iter().find(|&v| *v == ppn).is_some() {
             panic!("Frame ppn={:#x} has not been allocated!", ppn);
         }
         // recycle
@@ -60,9 +57,8 @@ impl StackFrameAllocator {
 
 type FrameAllocatorImpl = StackFrameAllocator;
 lazy_static! {
-    pub static ref FRAME_ALLOCATOR: UPSafeCell<FrameAllocatorImpl> = unsafe {
-        UPSafeCell::new(FrameAllocatorImpl::new())
-    };
+    pub static ref FRAME_ALLOCATOR: UPSafeCell<FrameAllocatorImpl> =
+        unsafe { UPSafeCell::new(FrameAllocatorImpl::new()) };
 }
 
 pub fn init_frame_allocator() {
@@ -72,7 +68,10 @@ pub fn init_frame_allocator() {
     FRAME_ALLOCATOR
         .exclusive_access()
         // why is ekernel's ceil
-        .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(MEMORY_END).floor());
+        .init(
+            PhysAddr::from(ekernel as usize).ceil(),
+            PhysAddr::from(MEMORY_END).floor(),
+        );
 }
 
 pub struct FrameTracker {
@@ -110,9 +109,7 @@ pub fn frame_alloc() -> Option<FrameTracker> {
 }
 
 fn frame_dealloc(ppn: PhysPageNum) {
-    FRAME_ALLOCATOR
-        .exclusive_access()
-        .dealloc(ppn);
+    FRAME_ALLOCATOR.exclusive_access().dealloc(ppn);
 }
 
 #[allow(unused)]
