@@ -52,6 +52,7 @@ impl StackFrameAllocator {
     pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
         self.current = l.0;
         self.end = r.0;
+        println!("last {} Physical Frames.", self.end - self.current);
     }
 }
 
@@ -69,7 +70,7 @@ pub fn init_frame_allocator() {
         .exclusive_access()
         // why is ekernel's ceil
         .init(
-            PhysAddr::from(ekernel as usize).ceil(),
+            PhysAddr::from(ekernel as *const () as usize).ceil(),
             PhysAddr::from(MEMORY_END).floor(),
         );
 }
