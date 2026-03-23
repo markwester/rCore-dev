@@ -21,13 +21,15 @@ const BS: u8 = 0x08u8;
 pub fn main() -> i32 {
     println!("Welcome to rCore's shell!");
     println!("Type 'help' to see the help message.");
+    let mut end = false;
+    let mut line = String::new();
+    print!(">> ");
     loop {
-        print!(">> ");
         let c = getchar();
-        let mut line = String::new();
         match c {
             LF | CR => {
                 println!("");
+                end = true;
             }
             BS | DL => {
                 print!("{}", BS as char);
@@ -40,8 +42,8 @@ pub fn main() -> i32 {
                 line.push(c as char);
             }
         }
-        if !line.is_empty() {
-            line.push('\n');
+        if end && !line.is_empty() {
+            line.push('\0');
             let pid = fork();
             if pid == 0 {
                 // child process
@@ -54,12 +56,13 @@ pub fn main() -> i32 {
                 let mut exit_code: i32 = 0;
                 let exit_pid = waitpid(pid as usize, &mut exit_code);
                 assert_eq!(pid, exit_pid);
-                println!(
-                    "Shell: Process {} exited with code {}",
-                    pid, exit_code
-                );
+                println!("Shell: Process {} exited with code {}", pid, exit_code);
             }
             line.clear();
+        }
+        if end {
+            end = false;
+            print!(">> ");
         }
     }
 }
