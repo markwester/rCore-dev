@@ -133,8 +133,8 @@ impl PageTable {
     }
 
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
-        // why va.floor
-        let ppn = self.translate(VirtPageNum::from(va)).unwrap().ppn();
+        let vpn = va.floor();
+        let ppn = self.translate(vpn).unwrap().ppn();
         let pa: PhysAddr = ppn.into();
         let pa_usize: usize = pa.into();
         let offset = va.page_offset();
