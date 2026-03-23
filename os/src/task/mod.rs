@@ -9,31 +9,22 @@ use context::TaskContext;
 use crate::loader::get_app_data_by_name;
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
-use manager::{TASK_MANAGER, enqueue_task};
+use manager::enqueue_task;
 use processor::{schedule, take_current_task};
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
-pub use processor::{run_tasks, current_user_token, current_task, current_trap_cx};
-
-pub fn mark_current_suspended() {
-    TASK_MANAGER.exclusive_access().mark_current_suspended();
-}
-
-fn pick_next_task() -> *mut TaskContext {
-    let task = current_task().unwrap();
-    let mut task_inner = task.inner_exclusive_access();
-    let task_ctx_ptr = &mut task_inner.task_cx as *mut TaskContext;
-
-    drop(task_inner);
-
-    enqueue_task(task);
-    task_ctx_ptr
-}
+pub use processor::{run_tasks, current_user_token, current_trap_cx};
 
 pub fn suspend_current_and_run_next() {
-    mark_current_suspended();
-    let next_task_ctx = pick_next_task();
-    schedule(next_task_ctx);
+    // mark current task as suspended and enqueue it
+    let task = take_current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    let task_cx_ptr = &mut task_inner.task_cx as *mut TaskContext;
+    task_inner.task_status = TaskStatus::Ready;
+    drop(task_inner);
+    enqueue_task(task);
+    // switch to schedule
+    schedule(task_cx_ptr);
 }
 
 /// mark zombie / save exit_code / push child in initproc / schedule

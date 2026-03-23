@@ -5,8 +5,6 @@ use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
 use crate::sync::UPSafeCell;
-use super::processor::take_current_task;
-use super::TaskStatus;
 
 pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>,
@@ -24,12 +22,6 @@ impl TaskManager {
         self.ready_queue.pop_front()
     }
 
-    pub fn mark_current_suspended(&mut self) {
-        if let Some(task) = take_current_task() {
-            task.inner_exclusive_access().task_status = TaskStatus::Ready;
-            self.enqueue_task(task);
-        }
-    }
 }
 
 lazy_static! {
