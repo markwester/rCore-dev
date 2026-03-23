@@ -48,9 +48,9 @@ pub fn rust_main() -> ! {
     println!("\x1b[31m hello rCore! \x1b[0m");
     mm::init();
     mm::remap_test();
+    trap::init();
     task::add_initproc();
     println!("added initproc!");
-    trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_tick();
     loader::list_apps();
