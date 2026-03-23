@@ -17,6 +17,7 @@ const CR: u8 = 0x0du8;
 const DL: u8 = 0x7fu8;
 const BS: u8 = 0x08u8;
 
+#[unsafe(no_mangle)]
 pub fn main() -> i32 {
     println!("Welcome to rCore's shell!");
     println!("Type 'help' to see the help message.");
