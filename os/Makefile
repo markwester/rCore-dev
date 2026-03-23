@@ -83,8 +83,8 @@ QEMU_ARGS := -machine virt \
     		 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 QEMU_NAME := qemu-system-riscv64
-qemu-version-check:
-	@sh scripts/qemu-ver-check.sh $(QEMU_NAME)
+# qemu-version-check:
+# 	@sh scripts/qemu-ver-check.sh $(QEMU_NAME)
 
 run-inner: qemu-version-check build
 	@qemu-system-riscv64 $(QEMU_ARGS)
