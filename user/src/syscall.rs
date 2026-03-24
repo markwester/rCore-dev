@@ -86,3 +86,11 @@ pub fn sys_exec(path: &str) -> isize {
 pub fn sys_read(fd: usize, buffer: &mut [u8]) -> isize {
     syscall(SYSCALL_READ, [fd, buffer.as_mut_ptr() as usize, buffer.len()])
 }
+
+/// 功能：获取当前上下文pid
+/// 参数：NA
+/// 返回值：如果出现了错误则返回 -1，否则返回当前上下文pid。
+/// syscall ID：63
+pub fn sys_getpid() -> isize {
+    syscall(SYSCALL_GETPID, [0, 0, 0])
+}
