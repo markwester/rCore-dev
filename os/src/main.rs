@@ -18,6 +18,7 @@ mod task;
 pub mod config;
 mod timer;
 pub mod mm;
+pub mod unwind;
 
 use core::arch::global_asm;
 

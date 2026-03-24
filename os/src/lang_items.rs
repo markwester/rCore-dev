@@ -1,5 +1,6 @@
 use crate::sbi::shutdown;
 use core::panic::PanicInfo;
+use crate::unwind::print_callstack;
 
 #[panic_handler]
 pub fn panic(info: &PanicInfo) -> ! {
@@ -13,5 +14,6 @@ pub fn panic(info: &PanicInfo) -> ! {
     } else {
         println!("[kernel] Panicked: {}", info.message());
     }
+    print_callstack();
     shutdown(true)
 }
