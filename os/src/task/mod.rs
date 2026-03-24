@@ -14,6 +14,7 @@ use processor::{schedule, take_current_task};
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 pub use processor::{run_tasks, current_user_token, current_trap_cx};
+use crate::sbi::shutdown;
 
 pub fn suspend_current_and_run_next() {
     // mark current task as suspended and enqueue it
@@ -27,10 +28,28 @@ pub fn suspend_current_and_run_next() {
     schedule(task_cx_ptr);
 }
 
+pub const IDLE_PID: usize = 0;
+
 /// mark zombie / save exit_code / push child in initproc / schedule
 pub fn exit_current_and_run_next(exit_code: i32) {
     // take from Processor
     let task = take_current_task().unwrap();
+
+    let pid = task.getpid();
+    if pid == IDLE_PID {
+        println!(
+            "[kernel] Idle process exit with exit_code {} ...",
+            exit_code
+        );
+        if exit_code != 0 {
+            //crate::sbi::shutdown(255); //255 == -1 for err hint
+            shutdown(true)
+        } else {
+            //crate::sbi::shutdown(0); //0 for success hint
+            shutdown(false)
+        }
+    }
+
     // **** access current TCB exclusively
     let mut inner = task.inner_exclusive_access();
     // Change status to Zombie
@@ -40,6 +59,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     // do not move to its parent but under initproc
 
     // ++++++ access initproc TCB exclusively
+    // 如果当前任务不是 INITPROC，才需要将子进程移交给 INITPROC
     {
         let mut initproc_inner = INITPROC.inner_exclusive_access();
         for child in inner.children.iter() {
