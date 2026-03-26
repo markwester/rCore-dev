@@ -12,6 +12,7 @@ mod syscall;
 use buddy_system_allocator::LockedHeap;
 use core::ptr::addr_of_mut;
 use syscall::*;
+use bitflags::bitflags;
 
 const USER_HEAP_SIZE: usize = 16384;
 
@@ -78,6 +79,24 @@ pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
             exit_pid => return exit_pid,
         }
     }
+}
+
+bitflags! {
+    pub struct OpenFlags: u32 {
+        const RDONLY = 0;
+        const WRONLY = 1 << 0;
+        const RDWR = 1 << 1;
+        const CREATE = 1 << 9;
+        const TRUNC = 1 << 10;
+    }
+}
+
+pub fn open(path: &str, flags: OpenFlags) -> isize {
+    sys_open(path, flags.bits)
+}
+
+pub fn close(fd: usize) -> isize {
+    sys_close(fd)
 }
 
 pub fn read(fd: usize, buf: &mut [u8]) -> isize {
