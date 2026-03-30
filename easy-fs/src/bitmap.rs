@@ -20,6 +20,10 @@ impl Bitmap {
             blocks,
         }
     }
+
+    pub fn maximum(&self) -> usize {
+        self.blocks * BLOCK_SZ * 8
+    }
 }
 
 type BitmapBlock = [u64; 64];
