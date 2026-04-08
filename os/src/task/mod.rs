@@ -5,16 +5,16 @@ pub mod processor;
 mod switch;
 mod task;
 
-use context::TaskContext;
-use crate::loader::get_app_data_by_name;
+use crate::fs::{OpenFlags, open_file};
+use crate::sbi::shutdown;
 use alloc::sync::Arc;
+use context::TaskContext;
 use lazy_static::lazy_static;
 use manager::enqueue_task;
+pub use processor::{current_task, current_trap_cx, current_user_token, run_tasks};
 use processor::{schedule, take_current_task};
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
-pub use processor::{run_tasks, current_user_token, current_trap_cx};
-use crate::sbi::shutdown;
 
 pub fn suspend_current_and_run_next() {
     // mark current task as suspended and enqueue it
@@ -83,7 +83,10 @@ pub fn exit_current_and_run_next(exit_code: i32) {
 
 lazy_static! {
     pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(TaskControlBlock::new(
-        get_app_data_by_name("init").unwrap()
+        open_file("init", OpenFlags::RDONLY)
+            .unwrap()
+            .read_all()
+            .as_slice()
     ));
 }
 

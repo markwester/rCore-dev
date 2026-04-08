@@ -20,3 +20,23 @@ easyfs 文件系统的整体架构自下而上可分为五层：
 
 
 SuperBlock 是一个磁盘上数据结构，它就存放在磁盘上编号为 0 的块的起始处。
+
+## 问题
+
+### Inode
+
+```rust
+pub struct Inode {
+    block_id: usize,
+    block_offset: usize,
+    fs: Arc<Mutex<EasyFileSystem>>,
+    block_device: Arc<dyn BlockDevice>,
+}
+```
+
+这玩意儿是怎么表示一个文件的，只有一个block_id和block_offset
+
+pub struct OSInodeInner {
+    offset: usize,
+    inode: Arc<Inode>,
+}

@@ -13,12 +13,13 @@ mod sbi;
 mod sync;
 pub mod syscall;
 pub mod trap;
-mod loader;
 mod task;
 pub mod config;
 mod timer;
 pub mod mm;
 pub mod unwind;
+mod fs;
+mod drivers;
 
 use core::arch::global_asm;
 
@@ -54,7 +55,7 @@ pub fn rust_main() -> ! {
     println!("added initproc!");
     trap::enable_timer_interrupt();
     timer::set_next_tick();
-    loader::list_apps();
+    fs::list_apps();
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

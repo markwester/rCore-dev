@@ -5,7 +5,6 @@ use crate::block_cache::get_block_cache;
 use crate::block_dev::BlockDevice;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use core::cmp::min;
 
 /// Magic number for sanity check
 const EFS_MAGIC: u32 = 0x3b800001;
@@ -306,7 +305,7 @@ impl DiskInode {
         let mut read_size = 0usize;
         loop {
             // calculate the end of current block
-            let mut end_current_blk = ((start_block + 1) * BLOCK_SZ).min(end);
+            let end_current_blk = ((start_block + 1) * BLOCK_SZ).min(end);
             let blk_read_size = end_current_blk - start;
             // read and update read_size
             let block_id = self.get_block_id(start_block as u32, block_device);
@@ -390,7 +389,7 @@ impl DirEntry {
     pub fn new(name: &str, inode_number: u32) -> Self {
         assert!(name.len() <= NAME_LENGTH_LIMIT);
         let mut name_arr = [0; NAME_LENGTH_LIMIT + 1];
-        &mut name_arr[..name.len()].copy_from_slice(name.as_bytes());
+        name_arr[..name.len()].copy_from_slice(name.as_bytes());
         Self {
             name: name_arr,
             inode_number,

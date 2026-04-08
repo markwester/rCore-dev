@@ -1,12 +1,12 @@
 //! syscall: process
 
-use crate::loader::get_app_data_by_name;
 use crate::mm::page_table::{copy_from_user_str, translated_refmut};
 use crate::task::{current_user_token, exit_current_and_run_next, suspend_current_and_run_next};
 use crate::timer::get_time_us;
 use crate::task::processor::current_task;
 use crate::task::manager::enqueue_task;
 use alloc::sync::Arc;
+use crate::fs::{open_file, OpenFlags};
 
 
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -39,9 +39,10 @@ pub fn sys_fork() -> isize {
 pub fn sys_exec(path: *const u8) -> isize {
     let token = current_user_token();
     let path = copy_from_user_str(token, path);
-    if let Some(data) = get_app_data_by_name(&path) {
+    if let Some(data) = open_file(&path, OpenFlags::RDONLY) {
         let task = current_task().unwrap();
-        task.exec(data);
+        let all_data = data.read_all();
+        task.exec(all_data.as_slice());
         0
     } else {
         -1

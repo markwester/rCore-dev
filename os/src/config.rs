@@ -17,3 +17,8 @@ pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
     let bottom = top - KERNEL_STACK_SIZE;
     (bottom, top)
 }
+
+#[cfg(feature = "board_qemu")]
+pub const MMIO: &[(usize, usize)] = &[
+    (0x10001000, 0x1000),
+];

@@ -9,7 +9,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use spin::{Mutex, MutexGuard};
 
-/// DiskInode 放在磁盘块中比较固定的位置，而 Inode 是放在内存中的记录文件索引节点信息的数据结构。
+/// DiskInode 放在磁盘块中比较固定的位置，而 Inode 放在内存中，其成员表达的是DiskInode在磁盘中的位置信息。
 pub struct Inode {
     block_id: usize,
     block_offset: usize,

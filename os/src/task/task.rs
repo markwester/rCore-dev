@@ -3,12 +3,14 @@
 use super::context::TaskContext;
 use super::pid::{KernelStack, PidHandle, pid_alloc};
 use crate::config::TRAP_CONTEXT;
+use crate::fs::{File, Stdin, Stdout};
 use crate::mm::address::{PhysPageNum, VirtAddr};
 use crate::mm::memory_set::{KERNEL_SPACE, MemorySet};
 use crate::sync::UPSafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
 use alloc::sync::{Arc, Weak};
+use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefMut;
 
@@ -18,7 +20,7 @@ pub enum TaskStatus {
     Ready,   // 准备运行
     Running, // 正在运行
     // Exited,  // 已退出
-    Zombie,  // 僵尸状态，已退出但父进程尚未回收
+    Zombie, // 僵尸状态，已退出但父进程尚未回收
 }
 
 pub struct TaskControlBlockInner {
@@ -32,6 +34,7 @@ pub struct TaskControlBlockInner {
     pub parent: Option<Weak<TaskControlBlock>>,
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
+    pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
 }
 pub struct TaskControlBlock {
     pub pid: PidHandle,
@@ -51,6 +54,14 @@ impl TaskControlBlockInner {
     }
     pub fn is_zombie(&self) -> bool {
         self.get_status() == TaskStatus::Zombie
+    }
+    pub fn alloc_fd(&mut self) -> usize {
+        if let Some(fd) = self.fd_table.iter().position(|f| f.is_none()) {
+            fd
+        } else {
+            self.fd_table.push(None);
+            self.fd_table.len() - 1
+        }
     }
 }
 
@@ -78,15 +89,19 @@ impl TaskControlBlock {
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,
+                    fd_table: vec![
+                        // 0 -> stdin
+                        Some(Arc::new(Stdin)),
+                        // 1 -> stdout
+                        Some(Arc::new(Stdout)),
+                        // 2 -> stderr
+                        Some(Arc::new(Stdout)),
+                    ],
                 })
             },
         };
         // prepare TrapContext in user space
-        let trap_cx = tcb
-            .inner
-            .exclusive_access()
-            .trap_cx_ppn
-            .get_mut();
+        let trap_cx = tcb.inner.exclusive_access().trap_cx_ppn.get_mut();
         *trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,
@@ -151,6 +166,7 @@ impl TaskControlBlock {
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
                     exit_code: 0,
+                    fd_table: Vec::new(),
                 })
             },
         });
