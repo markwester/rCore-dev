@@ -97,7 +97,7 @@ impl DiskInode {
                 .read(0, |indirect_blk: &IndirectBlock| indirect_blk[indirect1_id])
         } else {
             assert!(inner_id < INODE_INDIRECT2_BOUND);
-            let indirect2_id = inner_id - INODE_INDIRECT2_BOUND;
+            let indirect2_id = inner_id - INODE_INDIRECT1_BOUND;
             let inner_id1 = indirect2_id / INODE_INDIRECT1_COUNT;
             let inner_id2 = indirect2_id % INODE_INDIRECT1_COUNT;
             // get indirect1 block id

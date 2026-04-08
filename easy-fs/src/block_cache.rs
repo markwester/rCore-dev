@@ -98,17 +98,18 @@ impl BlockCacheManager {
             Arc::clone(&pair.1)
         } else {
             // subtitue the oldest
-            if let Some((idx, _)) = self
-                .queue
-                .iter()
-                .enumerate()
-                .find(|(_, pair)| Arc::strong_count(&pair.1) == 1)
-            {
-                self.queue.drain(idx..=idx);
-            } else {
-                panic!("All BlockCache are in use!")
+            if self.queue.len() == BLOCK_CACHE_SIZE {
+                if let Some((idx, _)) = self
+                    .queue
+                    .iter()
+                    .enumerate()
+                    .find(|(_, pair)| Arc::strong_count(&pair.1) == 1)
+                {
+                    self.queue.drain(idx..=idx);
+                } else {
+                    panic!("All BlockCache are in use!")
+                }
             }
-
             // load new block in cache
             let block_cache = Arc::new(Mutex::new(BlockCache::new(block_id, block_device)));
             self.queue.push_back((block_id, Arc::clone(&block_cache)));
