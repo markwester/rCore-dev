@@ -22,6 +22,7 @@ mod fs;
 mod drivers;
 
 use core::arch::global_asm;
+// use crate::board::BlockDeviceImpl;
 
 extern crate alloc;
 #[macro_use]
@@ -51,11 +52,12 @@ pub fn rust_main() -> ! {
     mm::init();
     mm::remap_test();
     trap::init();
-    task::add_initproc();
+    // BlockDeviceImpl::new();
     println!("added initproc!");
     trap::enable_timer_interrupt();
     timer::set_next_tick();
     fs::list_apps();
+    task::add_initproc();
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }
