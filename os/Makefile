@@ -29,7 +29,7 @@ DISASM ?= -x
 # Run usertests or usershell
 TEST ?=
 
-build: env $(KERNEL_BIN)
+build: env $(KERNEL_BIN) easy-fs-img
 
 env:
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
@@ -57,6 +57,12 @@ disasm-vim: kernel
 	@$(OBJDUMP) $(DISASM) $(KERNEL_ELF) > $(DISASM_TMP)
 	@vim $(DISASM_TMP)
 	@rm $(DISASM_TMP)
+
+easy-fs-img: easy-fs
+	@cd ../easy-fs-fues && cargo test
+
+easy-fs:
+	@cd ../easy-fs-fues && cargo build
 
 run: run-inner
 
