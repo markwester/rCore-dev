@@ -12,8 +12,13 @@ CP := cp
 
 TEST ?= 
 
+# Building mode argument
+ifeq ($(MODE), release)
+	MODE_ARG := --release
+endif
+
 elf: $(APPS)
-	@cargo build --release
+	@cargo build $(MODE_ARG)
 ifeq ($(TEST), 1)
 	@$(CP) $(TARGET_DIR)/usertests $(TARGET_DIR)/init
 endif

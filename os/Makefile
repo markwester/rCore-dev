@@ -4,7 +4,8 @@ MODE := release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/os
 KERNEL_BIN := $(KERNEL_ELF).bin
 DISASM_TMP := target/$(TARGET)/$(MODE)/asm
-FS_IMG := ../easy-fs-fues/target/fs.img
+FS_IMG := ../user/target/$(TARGET)/$(MODE)/fs.img
+APPS := ../user/src/bin/*
 
 # BOARD
 BOARD := qemu
@@ -41,10 +42,9 @@ $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
 kernel:
-	@cd ../user && make build TEST=$(TEST)
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build --release
+	@cargo build $(MODE_ARG)
 	@rm src/linker.ld
 
 clean:
@@ -58,11 +58,15 @@ disasm-vim: kernel
 	@vim $(DISASM_TMP)
 	@rm $(DISASM_TMP)
 
-easy-fs-img: easy-fs
-	@cd ../easy-fs-fues && cargo test
+easy-fs-img: easy-fs $(APPS)
+	@cd ../user && make build TEST=$(TEST) MODE=$(MODE)
+	@rm -f $(FS_IMG)
+	@cd ../easy-fs-fues && cargo run $(MODE_ARG) -- -s ../user/src/bin/ -t ../user/target/riscv64gc-unknown-none-elf/$(MODE)/
 
 easy-fs:
-	@cd ../easy-fs-fues && cargo build
+	@cd ../easy-fs && cargo build $(MODE_ARG)
+
+$(APPS):
 
 run: run-inner
 
@@ -92,4 +96,4 @@ gdbserver: qemu-version-check build
 gdbclient:
 	@gdb-multiarch -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
-.PHONY: build env kernel clean disasm disasm-vim run-inner gdbserver gdbclient qemu-version-check
+.PHONY: build env kernel clean disasm disasm-vim run-inner gdbserver gdbclient qemu-version-check easy-fs-img easy-fs
