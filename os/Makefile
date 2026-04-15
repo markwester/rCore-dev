@@ -42,12 +42,16 @@ $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
 kernel:
+	@cd ../user && make build TEST=$(TEST) MODE=$(MODE)
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
 	@cargo build $(MODE_ARG)
 	@rm src/linker.ld
 
 clean:
+	@cd ../user && make clean
+	@cd ../easy-fs && cargo clean
+	@cd ../easy-fs-fues && cargo clean
 	@cargo clean
 
 disasm: kernel
@@ -59,7 +63,6 @@ disasm-vim: kernel
 	@rm $(DISASM_TMP)
 
 easy-fs-img: easy-fs $(APPS)
-	@cd ../user && make build TEST=$(TEST) MODE=$(MODE)
 	@rm -f $(FS_IMG)
 	@cd ../easy-fs-fues && cargo run $(MODE_ARG) -- -s ../user/src/bin/ -t ../user/target/riscv64gc-unknown-none-elf/$(MODE)/
 
