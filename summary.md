@@ -48,3 +48,19 @@ pub struct OSInodeInner {
 make run MODE=debug 时遇到内核启动init之后就无反应现象，定位出来是Debug模式下的内核代码体积过大，导致栈溢出
 
 于是需要加一个栈溢出检测
+
+
+## issue
+
+### 执行最后一个app panic
+
+我找到问题的根本原因了！文件系统打包工具在写入文件后，没有显式调用 sync() 来同步块缓存。虽然 BlockCache 在 Drop 时会自动同步，但在某些情况下（特别是 cat_filea 这个文件），块缓存可能没有被正确释放和同步。
+
+根本原因：文件系统打包工具在写入文件后，没有显式同步所有的块缓存到磁盘，导致某些文件（特别是 cat_filea）的 inode 元数据没有正确写入。
+
+解决方案：
+
+在 easy-fs/src/block_cache.rs 中添加了 sync_all() 方法和 sync_all_block_cache() 函数，用于同步所有块缓存
+在 easy-fs/src/lib.rs 中导出 sync_all_block_cache 函数
+在 easy-fs-fues/src/main.rs 中，在所有文件打包完成后调用 sync_all_block_cache() 确保所有数据都写入磁盘
+现在你的 cd os && make run TEST=1 命令可以正常运行了，cat_filea 测试已经通过！后面出现的 matrix 测试的 VirtIO 错误是另一个独立的问题，与本次修复无关。

@@ -8,11 +8,51 @@ use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
 use spin::Mutex;
+use core::mem::ManuallyDrop;
+use alloc::boxed::Box;
+use core::alloc::Layout;
+use core::slice;
 
-const BLOCK_CACHE_SIZE: usize = 16;
+/// Use `ManuallyDrop` to ensure data is deallocated with an alignment of `BLOCK_SZ`
+struct CacheData(ManuallyDrop<Box<[u8; BLOCK_SZ]>>);
+
+impl CacheData {
+    pub fn new() -> Self {
+        let data = unsafe {
+            let raw = alloc::alloc::alloc(Self::layout());
+            Box::from_raw(raw as *mut [u8; BLOCK_SZ])
+        };
+        Self(ManuallyDrop::new(data))
+    }
+
+    fn layout() -> Layout {
+        Layout::from_size_align(BLOCK_SZ, BLOCK_SZ).unwrap()
+    }
+}
+
+impl Drop for CacheData {
+    fn drop(&mut self) {
+        let ptr = self.0.as_mut_ptr();
+        unsafe { alloc::alloc::dealloc(ptr, Self::layout()) };
+    }
+}
+
+impl AsRef<[u8]> for CacheData {
+    fn as_ref(&self) -> &[u8] {
+        let ptr = self.0.as_ptr() as *const u8;
+        unsafe { slice::from_raw_parts(ptr, BLOCK_SZ) }
+    }
+}
+
+impl AsMut<[u8]> for CacheData {
+    fn as_mut(&mut self) -> &mut [u8] {
+        let ptr = self.0.as_mut_ptr() as *mut u8;
+        unsafe { slice::from_raw_parts_mut(ptr, BLOCK_SZ) }
+    }
+}
 
 pub struct BlockCache {
-    data: [u8; BLOCK_SZ],
+    data: CacheData,
     block_id: usize,
     block_device: Arc<dyn BlockDevice>,
     modified: bool,
@@ -21,8 +61,8 @@ pub struct BlockCache {
 impl BlockCache {
     /// Load a new BlockCache from disk.
     pub fn new(block_id: usize, block_device: Arc<dyn BlockDevice>) -> Self {
-        let mut data = [0u8; BLOCK_SZ];
-        block_device.read_block(block_id, &mut data);
+        let mut data = CacheData::new();
+        block_device.read_block(block_id, data.as_mut());
         Self {
             data,
             block_id,
@@ -34,12 +74,12 @@ impl BlockCache {
     pub fn sync(&mut self) {
         if self.modified {
             self.modified = false;
-            self.block_device.write_block(self.block_id, &self.data);
+            self.block_device.write_block(self.block_id, self.data.as_mut());
         }
     }
 
     fn addr_of_offset(&self, offset: usize) -> usize {
-        &self.data[offset] as *const _ as usize
+        &self.data.as_ref()[offset] as *const _ as usize
     }
 
     pub fn get_ref<T>(&self, offset: usize) -> &T
@@ -77,6 +117,8 @@ impl Drop for BlockCache {
         self.sync()
     }
 }
+
+const BLOCK_CACHE_SIZE: usize = 16;
 
 pub struct BlockCacheManager {
     queue: VecDeque<(usize, Arc<Mutex<BlockCache>>)>,
@@ -116,6 +158,12 @@ impl BlockCacheManager {
             block_cache
         }
     }
+
+    pub fn sync_all(&mut self) {
+        for (_, cache) in self.queue.iter() {
+            cache.lock().sync();
+        }
+    }
 }
 
 lazy_static! {
@@ -130,4 +178,8 @@ pub fn get_block_cache(
     BLOCK_CACHE_MANAGER
         .lock()
         .get_block_cache(block_id, block_device)
+}
+
+pub fn sync_all_block_cache() {
+    BLOCK_CACHE_MANAGER.lock().sync_all();
 }

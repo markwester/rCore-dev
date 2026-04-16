@@ -1,6 +1,6 @@
 //! vfs: virtual file system for easy-fs
 
-use crate::block_cache::get_block_cache;
+use crate::block_cache::{get_block_cache, sync_all_block_cache};
 use crate::block_dev::BlockDevice;
 use crate::efs::EasyFileSystem;
 use crate::layout::{DIRENTRY_SZ, DirEntry, DiskInode, DiskInodeType};
@@ -152,6 +152,7 @@ impl Inode {
                 &self.block_device,
             );
         });
+        sync_all_block_cache();
         // new inode obj
         let (block_id, block_offset) = fs.get_disk_inode_pos(new_inode_id);
         Some(Arc::new(Self::new(
@@ -170,10 +171,12 @@ impl Inode {
 
     pub fn write_at(&self, offset: usize, buf: &[u8]) -> usize {
         let mut fs = self.fs.lock();
-        self.modify_disk_inode(|disk_inode| {
+        let size = self.modify_disk_inode(|disk_inode| {
             self.increase_size((offset + buf.len()) as u32, disk_inode, &mut fs);
             disk_inode.write_at(offset, buf, &self.block_device)
-        })
+        });
+        sync_all_block_cache();
+        size
     }
 
     pub fn clear(&self) {
@@ -187,5 +190,6 @@ impl Inode {
                 fs.dealloc_data(blk);
             }
         });
+        sync_all_block_cache();
     }
 }
