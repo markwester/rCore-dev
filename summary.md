@@ -40,3 +40,11 @@ pub struct OSInodeInner {
     offset: usize,
     inode: Arc<Inode>,
 }
+
+## 开发计划
+
+### 栈溢出检测
+
+make run MODE=debug 时遇到内核启动init之后就无反应现象，定位出来是Debug模式下的内核代码体积过大，导致栈溢出
+
+于是需要加一个栈溢出检测
