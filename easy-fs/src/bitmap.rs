@@ -43,7 +43,7 @@ impl Bitmap {
                         .map(|(bits64_pos, bits64)| (bits64_pos, bits64.trailing_ones() as usize))
                     {
                         bitmap_block[bits64_pos] |= 1u64 << inner_pos;
-                        Some(block_id * BLOCK_SZ + bits64_pos * 64 + inner_pos as usize)
+                        Some(block_id * BLOCK_BITS + bits64_pos * 64 + inner_pos as usize)
                     } else {
                         None
                     }
