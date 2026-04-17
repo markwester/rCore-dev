@@ -29,7 +29,7 @@ impl BlockDevice for VirtIOBlock {
         self.0
             .exclusive_access()
             .read_block(block_id, buf)
-            .expect("Error when reading VirtIOBlk");
+            .unwrap_or_else(|e| panic!("Error when reading VirtIOBlk block_id={}: {:?}", block_id, e));
     }
     fn write_block(&self, block_id: usize, buf: &[u8]) {
         self.0
