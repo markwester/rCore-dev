@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 
 /// Magic number for sanity check
 const EFS_MAGIC: u32 = 0x3b800001;
-
+#[allow(unused)]
 pub struct SuperBlock {
     magic: u32,
     pub total_blocks: u32,
@@ -79,9 +79,6 @@ impl DiskInode {
     }
     pub fn is_dir(&self) -> bool {
         self.type_ == DiskInodeType::Directory
-    }
-    pub fn is_file(&self) -> bool {
-        self.type_ == DiskInodeType::File
     }
 
     // get block id in disk
