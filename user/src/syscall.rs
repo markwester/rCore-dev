@@ -15,6 +15,7 @@ fn syscall(id: usize, args: [usize; 3]) -> isize {
 
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
+const SYSCALL_PIPE: usize = 59;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;
@@ -110,4 +111,14 @@ pub fn sys_read(fd: usize, buffer: &mut [u8]) -> isize {
 /// syscall ID：63
 pub fn sys_getpid() -> isize {
     syscall(SYSCALL_GETPID, [0, 0, 0])
+}
+
+
+/// 功能：为当前进程打开一个管道。
+/// 参数：pipe 表示应用地址空间中的一个长度为 2 的 usize 数组的起始地址，内核需要按顺序将管道读端
+/// 和写端的文件描述符写入到数组中。
+/// 返回值：如果出现了错误则返回 -1，否则返回 0 。可能的错误原因是：传入的地址不合法。
+/// syscall ID：59
+pub fn sys_pipe(pipe: &mut [usize]) -> isize {
+    syscall(SYSCALL_PIPE, [pipe.as_mut_ptr() as usize, 0, 0])
 }

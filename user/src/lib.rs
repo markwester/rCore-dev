@@ -9,10 +9,10 @@ pub mod console;
 mod lang_items;
 mod syscall;
 
+use bitflags::bitflags;
 use buddy_system_allocator::LockedHeap;
 use core::ptr::addr_of_mut;
 use syscall::*;
-use bitflags::bitflags;
 
 const USER_HEAP_SIZE: usize = 16384;
 
@@ -120,4 +120,8 @@ pub fn sleep(period_ms: usize) {
     while sys_get_time() < start + period_ms as isize {
         sys_yield();
     }
+}
+
+pub fn pipe(pipe_fd: &mut [usize]) -> isize {
+    sys_pipe(pipe_fd)
 }

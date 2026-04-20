@@ -44,10 +44,22 @@ fn clear_bss() {
     }
 }
 
+const RCORE_LOGO: &str = r#"
+ _______________________________
+<  rCore: Rust-based RISC-V OS >
+ -------------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+
+"#;
+
 #[unsafe(no_mangle)]
 pub fn rust_main() -> ! {
     clear_bss();
-    println!("\x1b[31m hello rCore! \x1b[0m");
+    println!("{}", RCORE_LOGO);
     mm::init();
     mm::remap_test();
     trap::init();
