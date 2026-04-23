@@ -1,13 +1,15 @@
 //! syscall: process
 
+use crate::fs::{OpenFlags, open_file};
 use crate::mm::page_table::{copy_from_user_str, translated_refmut};
+use crate::mm::translated_ref;
+use crate::task::manager::enqueue_task;
+use crate::task::processor::current_task;
 use crate::task::{current_user_token, exit_current_and_run_next, suspend_current_and_run_next};
 use crate::timer::get_time_us;
-use crate::task::processor::current_task;
-use crate::task::manager::enqueue_task;
+use alloc::string::String;
 use alloc::sync::Arc;
-use crate::fs::{open_file, OpenFlags};
-
+use alloc::vec::Vec;
 
 pub fn sys_exit(exit_code: i32) -> ! {
     exit_current_and_run_next(exit_code);
@@ -36,13 +38,24 @@ pub fn sys_fork() -> isize {
     child_pid as isize
 }
 
-pub fn sys_exec(path: *const u8) -> isize {
+pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
     let token = current_user_token();
     let path = copy_from_user_str(token, path);
+    let mut args_v: Vec<String> = Vec::new();
+    loop {
+        let arg_ptr = *translated_ref(token, args);
+        if arg_ptr == 0usize {
+            break;
+        }
+        args_v.push(copy_from_user_str(token, arg_ptr as *const u8));
+        unsafe {
+            args = args.add(1);
+        }
+    }
     if let Some(data) = open_file(&path, OpenFlags::RDONLY) {
         let task = current_task().unwrap();
         let all_data = data.read_all();
-        task.exec(all_data.as_slice());
+        task.exec(all_data.as_slice(), args_v);
         0
     } else {
         -1
@@ -57,22 +70,21 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     // ---- access current TCB exclusivel
     let mut inner = task.inner_exclusive_access();
     // if not child
-    if inner.children
+    if inner
+        .children
         .iter()
-        .find(|p| {pid == -1 || pid as usize == p.getpid()})
-        .is_none() {
+        .find(|p| pid == -1 || pid as usize == p.getpid())
+        .is_none()
+    {
         return -1;
         // ---- stop exclusively accessing current PCB
     }
 
-    let pair = inner.children
-        .iter()
-        .enumerate()
-        .find(|(_, p)| {
-            // ++++ temporarily access child PCB exclusively
-            p.inner_exclusive_access().is_zombie() && (pid == -1 || pid as usize == p.getpid())
-            // ++++ stop exclusively accessing child PCB
-        });
+    let pair = inner.children.iter().enumerate().find(|(_, p)| {
+        // ++++ temporarily access child PCB exclusively
+        p.inner_exclusive_access().is_zombie() && (pid == -1 || pid as usize == p.getpid())
+        // ++++ stop exclusively accessing child PCB
+    });
 
     if let Some((idx, _)) = pair {
         let child = inner.children.remove(idx);

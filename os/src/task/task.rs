@@ -6,6 +6,7 @@ use crate::config::TRAP_CONTEXT;
 use crate::fs::{File, Stdin, Stdout};
 use crate::mm::address::{PhysPageNum, VirtAddr};
 use crate::mm::memory_set::{KERNEL_SPACE, MemorySet};
+use crate::mm::translated_refmut;
 use crate::sync::UPSafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
@@ -13,6 +14,7 @@ use alloc::sync::{Arc, Weak};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefMut;
+use alloc::string::String;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
@@ -112,14 +114,45 @@ impl TaskControlBlock {
         tcb
     }
 
-    pub fn exec(&self, elf_data: &[u8]) {
+    pub fn exec(&self, elf_data: &[u8], args: Vec<String>) {
         // memory_set with elf program headers/trampoline/trap context/user stack
-        let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
+        let (memory_set, mut user_sp, entry_point) = MemorySet::from_elf(elf_data);
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
+        // push arguments on user stack
+        user_sp -= (args.len() + 1) * core::mem::size_of::<usize>();
+        let argv_base = user_sp;
+        // 获取高位存储字符串地址的用户空间地址
+        let mut argv: Vec<_> = (0..=args.len())
+            .map(|arg| {
+                translated_refmut(
+                    memory_set.token(),
+                    (argv_base + arg*core::mem::size_of::<usize>()) as *mut usize
+                )
+            })
+            .collect();
+        // 从底向上写入字符串
+        // 最后一个为0 有啥作用？标记参数结束吧
+        // 为什么各数据排列是高地址->低地址，但每个数据内排列时低->高
+        *argv[args.len()] = 0;
+        for i in 0..args.len() {
+            // 计算该参数的起始地址，加1预留一个'\0'
+            user_sp -= args[i].len() + 1;
+            *argv[i] = user_sp;
+            let mut p: usize = user_sp;
+            // 按char逐一copy
+            for c in args[i].as_bytes() {
+                *translated_refmut(memory_set.token(), p as *mut u8) = *c;
+                p += 1;
+            }
+            // 最后写入'\0'
+            *translated_refmut(memory_set.token(), p as *mut u8) = 0;
+        }
 
+        // make the user_sp aligned to 8B for k210 platform
+        user_sp -= user_sp % core::mem::size_of::<usize>();
         // **** access inner exclusively
         let mut inner = self.inner_exclusive_access();
         // substitute memory_set
@@ -129,7 +162,9 @@ impl TaskControlBlock {
         // initialize base_size
         inner.base_size = user_sp;
         // initialize trap_cx
-        let trap_cx = inner.get_trap_cx();
+        let trap_cx: &mut TrapContext = inner.get_trap_cx();
+        trap_cx.x[10] = args.len();
+        trap_cx.x[11] = argv_base;
         *trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,

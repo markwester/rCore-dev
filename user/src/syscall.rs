@@ -13,6 +13,7 @@ fn syscall(id: usize, args: [usize; 3]) -> isize {
     ret
 }
 
+const SYSCALL_DUP: usize = 24;
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_PIPE: usize = 59;
@@ -93,8 +94,8 @@ pub fn sys_waitpid(pid: isize, exit_code: *mut i32) -> isize {
 /// 参数：path 给出了要加载的可执行文件的名字；
 /// 返回值：如果出错的话（如找不到名字相符的可执行文件）则返回 -1，否则不应该返回。
 /// syscall ID：221
-pub fn sys_exec(path: &str) -> isize {
-    syscall(SYSCALL_EXEC, [path.as_ptr() as usize, 0, 0])
+pub fn sys_exec(path: &str, args: &[*const u8]) -> isize {
+    syscall(SYSCALL_EXEC, [path.as_ptr() as usize, args.as_ptr() as usize, 0])
 }
 
 /// 功能：从文件中读取一段内容到缓冲区。
@@ -121,4 +122,13 @@ pub fn sys_getpid() -> isize {
 /// syscall ID：59
 pub fn sys_pipe(pipe: &mut [usize]) -> isize {
     syscall(SYSCALL_PIPE, [pipe.as_mut_ptr() as usize, 0, 0])
+}
+
+/// 功能：将进程中一个已经打开的文件复制一份并分配到一个新的文件描述符中。
+/// 参数：fd 表示进程中一个已经打开的文件的文件描述符。
+/// 返回值：如果出现了错误则返回 -1，否则能够访问已打开文件的新文件描述符。
+/// 可能的错误原因是：传入的 fd 并不对应一个合法的已打开文件。
+/// syscall ID：24
+pub fn sys_dup(fd: usize) -> isize {
+    syscall(SYSCALL_DUP, [fd, 0, 0])
 }

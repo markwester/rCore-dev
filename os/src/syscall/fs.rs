@@ -3,6 +3,7 @@ use crate::mm::page_table::translated_byte_buffer;
 use crate::mm::{UserBuffer, translated_str, translated_refmut};
 use crate::task::current_task;
 use crate::task::current_user_token;
+use alloc::sync::Arc;
 
 /// the common function for syscall write and read
 fn rw_file(fd: usize, buf: *const u8, len: usize, is_write: bool) -> isize {
@@ -80,4 +81,19 @@ pub fn sys_pipe(pipe: *mut usize) -> isize {
     *translated_refmut(token, pipe) = read_fd;
     *translated_refmut(token, unsafe { pipe.add(1) }) = write_fd;
     0
+}
+
+pub fn sys_dup(fd: usize) -> isize {
+    let task = current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    if fd >= task_inner.fd_table.len() {
+        return -1;
+    }
+    if task_inner.fd_table[fd].is_none() {
+        return -1;
+    }
+
+    let new_fd = task_inner.alloc_fd();
+    task_inner.fd_table[new_fd] = Some(Arc::clone(task_inner.fd_table[fd].as_ref().unwrap()));
+    new_fd as isize
 }
