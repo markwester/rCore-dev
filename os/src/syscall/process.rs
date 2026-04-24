@@ -55,8 +55,13 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
     if let Some(data) = open_file(&path, OpenFlags::RDONLY) {
         let task = current_task().unwrap();
         let all_data = data.read_all();
+        let argc = args_v.len();
         task.exec(all_data.as_slice(), args_v);
-        0
+        // return argc because cx.x[10] will be covered in trap_handler
+        // if exec successed, the result will not meaningful and can be ignored
+        // but if exec failed, the result will covered x[10] by trap_handler, it's meaningful for user
+        // so we return argc and cover x[10] in trap_handler to promiss x[10] is correct argc
+        argc as isize
     } else {
         -1
     }

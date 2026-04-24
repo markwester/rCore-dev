@@ -163,8 +163,6 @@ impl TaskControlBlock {
         inner.base_size = user_sp;
         // initialize trap_cx
         let trap_cx: &mut TrapContext = inner.get_trap_cx();
-        trap_cx.x[10] = args.len();
-        trap_cx.x[11] = argv_base;
         *trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,
@@ -172,6 +170,9 @@ impl TaskControlBlock {
             self.kernel_stack.get_top(),
             trap_handler as *const () as usize,
         );
+        // 必须在 app_init_context 之后设置 argc/argv，否则会被覆盖
+        trap_cx.x[10] = args.len();
+        trap_cx.x[11] = argv_base;
         // **** stop exclusively accessing inner automatically
     }
 
