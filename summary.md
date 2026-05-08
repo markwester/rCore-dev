@@ -155,3 +155,7 @@ index d6bb975..6b822b2 100644
 +    exit(-1);
  }
 ```
+
+### pid2task pid2task_addmap pid2task_delmap调用时机不理解
+
+我认为应该被放在tcb被创建和销毁时，因为那时候也是pid被创建和回收的地方；

@@ -15,6 +15,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefMut;
 use alloc::string::String;
+use super::signal::SignalFlags;
+use super::action::SignalActions;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
@@ -37,6 +39,13 @@ pub struct TaskControlBlockInner {
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
+    pub signal_mask: SignalFlags,
+    pub signal_actions: SignalActions,
+    pub signals: SignalFlags,
+    pub killed: bool,
+    pub frozen: bool,
+    pub handling_sig: isize, // -1 for not handling, otherwise the signal number being handled
+    pub trap_ctx_backup: Option<TrapContext>, // used to save the trap context when handling signals
 }
 pub struct TaskControlBlock {
     pub pid: PidHandle,
@@ -99,6 +108,13 @@ impl TaskControlBlock {
                         // 2 -> stderr
                         Some(Arc::new(Stdout)),
                     ],
+                    signal_mask: SignalFlags::empty(),
+                    signal_actions: SignalActions::default(),
+                    signals: SignalFlags::empty(),
+                    killed: false,
+                    frozen: false,
+                    handling_sig: -1,
+                    trap_ctx_backup: None,
                 })
             },
         };
@@ -211,6 +227,14 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     fd_table: new_fd_table,
+                    // inherit the signal_mask and signal_action
+                    signal_mask: parent_inner.signal_mask,
+                    signal_actions: parent_inner.signal_actions.clone(),
+                    signals: SignalFlags::empty(),
+                    killed: false,
+                    frozen: false,
+                    handling_sig: -1,
+                    trap_ctx_backup: None,
                 })
             },
         });

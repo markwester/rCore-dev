@@ -3,7 +3,7 @@ pub mod context;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
 use crate::task::{
-    current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next,
+    current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next, current_add_signal, SignalFlags, handle_signals, check_signals_error_of_current
 };
 use crate::timer::set_next_tick;
 pub use context::TrapContext;
@@ -98,14 +98,15 @@ pub fn trap_handler() -> ! {
         | Trap::Exception(Exception::InstructionPageFault)
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
-            println!(
-                "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
-                scause.cause(),
-                stval,
-                current_trap_cx().sepc,
-            );
+            // println!(
+            //     "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
+            //     scause.cause(),
+            //     stval,
+            //     current_trap_cx().sepc,
+            // );
             // page fault exit code
-            exit_current_and_run_next(-2);
+            // exit_current_and_run_next(-2);
+            current_add_signal(SignalFlags::SIGSEGV);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
@@ -118,6 +119,13 @@ pub fn trap_handler() -> ! {
                 stval
             );
         }
+    }
+
+    handle_signals();
+    // check error signals (if error then exit)
+    if let Some((errno, msg)) = check_signals_error_of_current() {
+        println!("[kernel] {}", msg);
+        exit_current_and_run_next(errno);
     }
     trap_return();
 }
