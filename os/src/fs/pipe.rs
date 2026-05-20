@@ -1,7 +1,4 @@
 //! pipe impl
-
-use core::panic;
-
 use super::File;
 use crate::mm::UserBuffer;
 use crate::sync::UPSafeCell;
@@ -59,6 +56,15 @@ impl PipeRingBuffer {
         c
     }
 
+    pub fn write_byte(&mut self, byte: u8) {
+        self.status = RingBufferStatus::NORMAL;
+        self.arr[self.tail] = byte;
+        self.tail = (self.tail + 1) % RING_BUFFER_SIZE;
+        if self.head == self.tail {
+            self.status = RingBufferStatus::FULL;
+        }
+    }
+
     pub fn available_read(&self) -> usize {
         if self.status == RingBufferStatus::EMPTY {
             0
@@ -68,6 +74,14 @@ impl PipeRingBuffer {
             } else {
                 self.tail + RING_BUFFER_SIZE - self.head
             }
+        }
+    }
+
+    pub fn available_write(&self) -> usize {
+        if self.status == RingBufferStatus::FULL {
+            0
+        } else {
+            RING_BUFFER_SIZE - self.available_read()
         }
     }
 
@@ -104,14 +118,40 @@ pub fn make_pipe() -> (Arc<Pipe>, Arc<Pipe>) {
 
 impl File for Pipe {
     fn readable(&self) -> bool {
-        panic!("xxx");
+        self.readable
     }
     fn writable(&self) -> bool {
-        panic!("xxx");
+        self.writable
     }
     fn write(&self, buf: UserBuffer) -> usize {
-        panic!("xxx {}", buf.len());
+        assert!(self.writable());
+        let want_to_write = buf.len();
+        let mut buf_iter = buf.into_iter();
+        let mut already_written = 0usize;
+        loop {
+            let mut ring_buffer = self.buffer.exclusive_access();
+            let loop_write = ring_buffer.available_write();
+            if loop_write == 0 {
+                drop(ring_buffer);
+                suspend_current_and_run_next();
+                continue;
+            }
+            for _ in 0..loop_write {
+                if let Some(byte_ref) = buf_iter.next() {
+                    unsafe {
+                        ring_buffer.write_byte(*byte_ref);
+                    }
+                    already_written += 1;
+                    if already_written == want_to_write {
+                        return want_to_write;
+                    }
+                } else {
+                    return already_written;
+                }
+            }
+        }
     }
+
     fn read(&self, buf: UserBuffer) -> usize {
         assert!(self.readable());
         let want_to_read = buf.len();

@@ -226,6 +226,15 @@ pub struct SignalAction {
     pub mask: SignalFlags,
 }
 
+impl Default for SignalAction {
+    fn default() -> Self {
+        Self {
+            handler: 0,
+            mask: SignalFlags::empty(),
+        }
+    }
+}
+
 pub fn sigaction(
     signum: i32,
     action: Option<&SignalAction>,
