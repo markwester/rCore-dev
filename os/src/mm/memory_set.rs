@@ -3,9 +3,7 @@ use crate::mm::frame_allocator::{FrameTracker, frame_alloc};
 use crate::mm::page_table::PageTable;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
-// use riscv::addr::Page;
-use crate::config::{MEMORY_END, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT, USER_STACK_SIZE, MMIO};
-// use xmas_elf::ElfFile;
+use crate::config::{MEMORY_END, PAGE_SIZE, TRAMPOLINE, MMIO};
 use crate::mm::page_table::{PTEFlags, PageTableEntry};
 use crate::sync::UPSafeCell;
 use alloc::sync::Arc;
@@ -299,32 +297,13 @@ impl MemorySet {
         }
         // map user stack with U flags
         let max_end_va: VirtAddr = max_end_vpn.into();
-        let mut user_stack_bottom: usize = max_end_va.into();
+        let mut user_stack_base: usize = max_end_va.into();
         // guard page
-        user_stack_bottom += PAGE_SIZE;
-        let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
-        memory_set.push(
-            MapArea::new(
-                user_stack_bottom.into(),
-                user_stack_top.into(),
-                MapType::Framed,
-                MapPermission::R | MapPermission::W | MapPermission::U,
-            ),
-            None,
-        );
+        user_stack_base += PAGE_SIZE;
         // map TrapContext
-        memory_set.push(
-            MapArea::new(
-                TRAP_CONTEXT.into(),
-                TRAMPOLINE.into(),
-                MapType::Framed,
-                MapPermission::R | MapPermission::W,
-            ),
-            None,
-        );
         (
             memory_set,
-            user_stack_top,
+            user_stack_base,
             elf.header.pt2.entry_point() as usize,
         )
     }

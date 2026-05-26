@@ -1,14 +1,14 @@
 use crate::fs::{OpenFlags, open_file, make_pipe};
 use crate::mm::page_table::translated_byte_buffer;
 use crate::mm::{UserBuffer, translated_str, translated_refmut};
-use crate::task::current_task;
+use crate::task::current_process;
 use crate::task::current_user_token;
 use alloc::sync::Arc;
 
 /// the common function for syscall write and read
 fn rw_file(fd: usize, buf: *const u8, len: usize, is_write: bool) -> isize {
-    let task = current_task().unwrap();
-    let inner = task.inner_exclusive_access();
+    let pcb = current_process();
+    let inner = pcb.inner_exclusive_access();
     let fd_table = &inner.fd_table;
     if fd >= fd_table.len() || fd_table[fd].is_none() {
         return -1;
@@ -40,13 +40,13 @@ pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
 /// open a file with `name` and `flags`, return the fd of this file
 pub fn sys_open(path: *const u8, flags: u32) -> isize {
     // create this vfs inode and add fd to current process's fd table
-    let task = current_task().unwrap();
+    let pcb = current_process();
     let token = current_user_token();
     let path = translated_str(token, path);
     if let Some(file) = open_file(path.as_str(), OpenFlags::from_bits(flags).unwrap()) {
-        let mut task_inner = task.inner_exclusive_access();
-        let fd = task_inner.alloc_fd();
-        task_inner.fd_table[fd] = Some(file);
+        let mut pcb_inner = pcb.inner_exclusive_access();
+        let fd = pcb_inner.alloc_fd();
+        pcb_inner.fd_table[fd] = Some(file);
         fd as isize
     } else {
         -1
@@ -56,23 +56,23 @@ pub fn sys_open(path: *const u8, flags: u32) -> isize {
 /// close the file with `fd`
 pub fn sys_close(fd: usize) -> isize {
     // delete this vfs inode and remove fd from current process's fd table
-    let task = current_task().unwrap();
-    let mut task_inner = task.inner_exclusive_access();
-    if fd > task_inner.fd_table.len() {
+    let pcb = current_process();
+    let mut pcb_inner = pcb.inner_exclusive_access();
+    if fd >= pcb_inner.fd_table.len() {
         return -1;
     }
-    if task_inner.fd_table[fd].is_none() {
+    if pcb_inner.fd_table[fd].is_none() {
         return -1;
     }
-    task_inner.fd_table[fd] = None;
+    pcb_inner.fd_table[fd] = None;
     0
 }
 
 /// get pipe (pipe_read, pipe_write)
 pub fn sys_pipe(pipe: *mut usize) -> isize {
-    let task = current_task().unwrap();
+    let pcb = current_process();
     let token = current_user_token();
-    let mut inner = task.inner_exclusive_access();
+    let mut inner = pcb.inner_exclusive_access();
     let (pipe_read, pipe_write) = make_pipe();
     let read_fd = inner.alloc_fd();
     inner.fd_table[read_fd] = Some(pipe_read);
@@ -84,16 +84,16 @@ pub fn sys_pipe(pipe: *mut usize) -> isize {
 }
 
 pub fn sys_dup(fd: usize) -> isize {
-    let task = current_task().unwrap();
-    let mut task_inner = task.inner_exclusive_access();
-    if fd >= task_inner.fd_table.len() {
+    let pcb = current_process();
+    let mut pcb_inner = pcb.inner_exclusive_access();
+    if fd >= pcb_inner.fd_table.len() {
         return -1;
     }
-    if task_inner.fd_table[fd].is_none() {
+    if pcb_inner.fd_table[fd].is_none() {
         return -1;
     }
 
-    let new_fd = task_inner.alloc_fd();
-    task_inner.fd_table[new_fd] = Some(Arc::clone(task_inner.fd_table[fd].as_ref().unwrap()));
+    let new_fd = pcb_inner.alloc_fd();
+    pcb_inner.fd_table[new_fd] = Some(Arc::clone(pcb_inner.fd_table[fd].as_ref().unwrap()));
     new_fd as isize
 }

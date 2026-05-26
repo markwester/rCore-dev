@@ -159,3 +159,28 @@ index d6bb975..6b822b2 100644
 ### pid2task pid2task_addmap pid2task_delmap调用时机不理解
 
 我认为应该被放在tcb被创建和销毁时，因为那时候也是pid被创建和回收的地方；
+
+### Arc / Weak / Arc::downgrade / Arc::upgrade ?
+
+```rust
+// process -> Arc<ProcessControlBlock>
+Arc::downgrade(&process) // 强引用Arc降弱引用Weak
+Arc::upgrade(&process) // 弱引用Weak升级强引用Arc
+```
+
+```
+ProcessControlBlock (进程)
+    │
+    ├── tasks: Vec<Arc<TaskControlBlock>>    ← 强引用：进程拥有线程
+    │
+TaskControlBlock (线程)
+    │
+    ├── process: Weak<ProcessControlBlock>   ← 弱引用：线程引用进程
+```
+
+避免循环引用导致内存泄漏
+
+进程销毁条件看强引用 Arc 引用计数是否归零
+
+Arc（强引用）：你持有房子的房产证，房子不能拆
+Weak（弱引用）：你只记住了房子的地址，房子该拆就拆，你去看的时候可能已经没了

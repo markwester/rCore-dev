@@ -1,11 +1,11 @@
 pub mod context;
 
-use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT_BASE};
 use crate::syscall::syscall;
 use crate::task::{
-    current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next, current_add_signal, SignalFlags, handle_signals, check_signals_error_of_current
+    current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next, current_add_signal, SignalFlags, check_signals_error_of_current
 };
-use crate::timer::set_next_tick;
+use crate::timer::{set_next_tick, check_timer};
 pub use context::TrapContext;
 use core::arch::asm;
 use core::arch::global_asm;
@@ -44,7 +44,7 @@ pub fn trap_from_kernel() {
 #[unsafe(no_mangle)]
 pub fn trap_return() -> ! {
     set_user_trap_entry();
-    let trap_cx_ptr = TRAP_CONTEXT;
+    let trap_cx_ptr = TRAP_CONTEXT_BASE;
     let user_satp = current_user_token();
     unsafe extern "C" {
         fn __alltraps();
@@ -80,6 +80,7 @@ pub fn trap_handler() -> ! {
     match scause.cause() {
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_tick();
+            check_timer();
             suspend_current_and_run_next();
         }
         Trap::Exception(Exception::UserEnvCall) => {
@@ -120,7 +121,7 @@ pub fn trap_handler() -> ! {
         }
     }
 
-    handle_signals();
+    // handle_signals();
     // check error signals (if error then exit)
     if let Some((errno, msg)) = check_signals_error_of_current() {
         println!("[kernel] {}", msg);

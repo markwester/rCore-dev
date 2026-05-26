@@ -68,7 +68,7 @@ pub fn rust_main() -> ! {
     trap::enable_timer_interrupt();
     timer::set_next_tick();
     fs::list_apps();
-    task::add_initproc();
+    task::init_initproc();
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

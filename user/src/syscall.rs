@@ -32,6 +32,8 @@ const SYSCALL_GETPID: usize = 172;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
+const SYSCALL_THREAD_CREATE: usize = 1000;
+const SYSCALL_WAITTID: usize = 1002;
 
 /// 功能：打开一个常规文件，并返回可以访问它的文件描述符。
 /// 参数：path 描述要打开的文件的文件名（简单起见，文件系统不需要支持目录，所有的文件都放在根目录 / 下），
@@ -160,4 +162,20 @@ pub fn sys_sigprocmask(mask: u32) -> isize {
 
 pub fn sys_sigreturn() -> isize {
     syscall(SYSCALL_SIGRETURN, [0, 0, 0])
+}
+
+/// 功能：当前进程创建一个新的线程
+/// 参数：entry 表示线程的入口函数地址，arg 表示传给线程入口函数参数
+/// 返回值：创建的线程的 TID
+/// syscall ID: 1000
+pub fn sys_thread_create(entry: usize, arg: usize) -> isize {
+    syscall(SYSCALL_THREAD_CREATE, [entry, arg, 0])
+}
+
+/// 功能：等待当前进程内的一个指定线程退出
+/// 参数：tid 表示指定线程的 TID
+/// 返回值：如果线程不存在，返回-1；如果线程还没退出，返回-2；其他情况下，返回结束线程的退出码
+/// syscall ID: 1002
+pub fn sys_waittid(tid: usize) -> isize {
+    syscall(SYSCALL_WAITTID, [tid, 0, 0])
 }

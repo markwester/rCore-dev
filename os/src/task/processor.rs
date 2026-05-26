@@ -6,6 +6,7 @@ use super::TaskStatus;
 use super::manager::dequeue_task;
 use super::task::TaskControlBlock;
 use crate::sync::UPSafeCell;
+use crate::task::current_process;
 use crate::trap::context::TrapContext;
 use alloc::sync::Arc;
 use lazy_static::lazy_static;
@@ -52,9 +53,9 @@ pub fn current_task() -> Option<Arc<TaskControlBlock>> {
 }
 
 pub fn current_user_token() -> usize {
-    let task: Arc<TaskControlBlock> = current_task().unwrap();
-    let token = task.inner_exclusive_access().get_user_token();
-    token
+    let pcb = current_process();
+    let inner = pcb.inner_exclusive_access();
+    inner.get_user_token()
 }
 
 pub fn current_trap_cx() -> &'static mut TrapContext {
