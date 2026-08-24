@@ -100,15 +100,16 @@ impl ProcessControlBlock {
         let tcb = Arc::new(TaskControlBlock::new(Arc::clone(&pcb), ustack_base, true));
         let tcb_inner = tcb.inner_exclusive_access();
         let trap_cx = tcb_inner.get_trap_cx();
+        let ustack_top = tcb_inner.res.as_ref().unwrap().get_ustack_top();
         let kernel_sp = tcb.kstack.get_top();
+        drop(tcb_inner);
         *trap_cx = TrapContext::app_init_context(
             entry_point,
-            tcb_inner.res.as_ref().unwrap().get_ustack_top(),
+            ustack_top,
             kernel_token(),
             kernel_sp,
             trap_handler as usize,
         );
-        drop(tcb_inner);
 
         let mut pcb_inner = pcb.inner_exclusive_access();
         pcb_inner.tasks.push(Some(Arc::clone(&tcb)));
@@ -228,7 +229,10 @@ impl ProcessControlBlock {
         // make the user_sp aligned to 8B for k210 platform
         user_sp -= user_sp % core::mem::size_of::<usize>();
         // initialize trap_cx
-        let trap_cx: &mut TrapContext = task.inner_exclusive_access().get_trap_cx();
+        // 注意：task_inner 自 192 行起一直持有 task.inner 的独占借用，直到函数结束，
+        // 这里必须复用 task_inner.get_trap_cx()，不能再 task.inner_exclusive_access()
+        // 否则会触发 UPSafeCell 的 "already borrowed" 二次借用 panic。
+        let trap_cx: &mut TrapContext = task_inner.get_trap_cx();
         *trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,
