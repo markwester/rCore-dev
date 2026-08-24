@@ -53,13 +53,15 @@ impl TaskControlBlock {
         let user_res = TaskUserRes::new(pcb.clone(), ustack_base, alloc_user_res);
         let kstack = kstack_alloc();
         let kstack_top = kstack.get_top();
+        // 先取出 trap_cx_ppn，再把 user_res move 进 res，避免借用到 move 的冲突
+        let trap_cx_ppn = user_res.trap_cx_ppn();
         let tcb: TaskControlBlock = Self {
             process: Arc::downgrade(&pcb),
             kstack: kstack,
             inner: unsafe {
                 UPSafeCell::new(TaskControlBlockInner {
-                    res: None,
-                    trap_cx_ppn: user_res.trap_cx_ppn(),
+                    res: Some(user_res),
+                    trap_cx_ppn,
                     task_cx: TaskContext::goto_trap_return(kstack_top),
                     task_status: TaskStatus::Ready,
                     exit_code: None,
