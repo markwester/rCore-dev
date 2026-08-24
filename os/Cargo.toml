@@ -14,6 +14,10 @@ xmas-elf = "0.7.0"
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "4ee80e5" }
 easy-fs = { path = "../easy-fs" }
 
+[build-dependencies]
+# Used by build.rs to demangle Rust symbol names for the panic backtrace.
+rustc-demangle = "0.1"
+
 [features]
 board_qemu = []
 board_k210 = []
