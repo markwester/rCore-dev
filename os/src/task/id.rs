@@ -137,9 +137,10 @@ impl TaskUserRes {
         // trap_cx_bottom_from_tid(self.tid).int
         let process = self.process.upgrade().unwrap();
         let process_inner = process.inner_exclusive_access();
+        let trap_cx_bottom_va: VirtAddr = trap_cx_bottom_from_tid(self.tid).into();
         process_inner
             .memory_set
-            .translate(trap_cx_bottom_from_tid(self.tid).into())
+            .translate(trap_cx_bottom_va.into())
             .unwrap()
             .ppn()
     }
