@@ -16,6 +16,7 @@ pub enum TaskStatus {
     // UnInit, // 未初始化
     Ready,   // 准备运行
     Running, // 正在运行
+    Block,   // 阻塞，等待某些事件发生
     // Exited,  // 已退出
     Zombie, // 僵尸状态，已退出但父进程尚未回收
 }

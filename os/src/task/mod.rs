@@ -42,6 +42,17 @@ pub fn suspend_current_and_run_next() {
     schedule(task_cx_ptr);
 }
 
+pub fn block_current_and_run_next() {
+    // mark current task as suspended and enqueue it
+    let task = take_current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    let task_cx_ptr = &mut task_inner.task_cx as *mut TaskContext;
+    task_inner.task_status = TaskStatus::Block;
+    drop(task_inner);
+    // switch to schedule
+    schedule(task_cx_ptr);
+}
+
 pub const IDLE_PID: usize = 0;
 
 /// mark zombie / save exit_code / push child in initproc / schedule

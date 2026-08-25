@@ -40,7 +40,7 @@ pub fn sys_thread_create(entry: usize, arg: usize) -> isize {
 }
 
 #[allow(unused)]
-pub fn sys_waittid(tid: usize) -> i32 {
+pub fn sys_waittid(tid: usize) -> isize {
     let task = current_task().unwrap();
     let task_inner = task.inner_exclusive_access();
     let process = task.process.upgrade().unwrap();
@@ -63,7 +63,7 @@ pub fn sys_waittid(tid: usize) -> i32 {
 
     if let Some(exit_code) = exit_code {
         process_inner.tasks[tid] = None;
-        exit_code
+        exit_code as isize
     } else {
         // waited thread has not exited
         -2

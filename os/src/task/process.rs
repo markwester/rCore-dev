@@ -19,6 +19,7 @@ use core::cell::RefMut;
 use alloc::string::String;
 use crate::mm::{translated_refmut, kernel_token};
 use super::current_task;
+use crate::sync::Mutex;
 
 pub struct ProcessControlBlock {
     // immutable
@@ -37,6 +38,7 @@ pub struct ProcessControlBlockInner {
     pub signals: SignalFlags,
     pub tasks: Vec<Option<Arc<TaskControlBlock>>>,
     pub task_res_allocator: RecycleAllocator,
+    pub mutex_list: Vec<Option<Arc<dyn Mutex>>>,
 }
 
 impl ProcessControlBlockInner {
