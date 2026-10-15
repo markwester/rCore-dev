@@ -19,7 +19,7 @@ use core::cell::RefMut;
 use alloc::string::String;
 use crate::mm::{translated_refmut, kernel_token};
 use super::current_task;
-use crate::sync::Mutex;
+use crate::sync::{Mutex, Semaphore, Condvar};
 
 pub struct ProcessControlBlock {
     // immutable
@@ -39,6 +39,8 @@ pub struct ProcessControlBlockInner {
     pub tasks: Vec<Option<Arc<TaskControlBlock>>>,
     pub task_res_allocator: RecycleAllocator,
     pub mutex_list: Vec<Option<Arc<dyn Mutex>>>,
+    pub semaphore_list: Vec<Option<Arc<Semaphore>>>,
+    pub condvar_list: Vec<Option<Arc<Condvar>>>,
 }
 
 impl ProcessControlBlockInner {
@@ -94,6 +96,9 @@ impl ProcessControlBlock {
                     signals: SignalFlags::empty(),
                     tasks: Vec::new(),
                     task_res_allocator: RecycleAllocator::new(),
+                    mutex_list: Vec::new(),
+                    semaphore_list: Vec::new(),
+                    condvar_list: Vec::new(),
                 })
             },
         });
@@ -153,6 +158,9 @@ impl ProcessControlBlock {
                     signals: SignalFlags::empty(),
                     tasks: Vec::new(),
                     task_res_allocator: RecycleAllocator::new(),
+                    mutex_list: Vec::new(),
+                    semaphore_list: Vec::new(),
+                    condvar_list: Vec::new(),
                 })
             },
         });

@@ -3,7 +3,7 @@ use super::up::UPSafeCell;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use crate::task::TaskControlBlock;
-use crate::task::{current_task, block_current_and_run_next};
+use crate::task::{current_task, block_current_and_run_next, suspend_current_and_run_next};
 
 pub trait Mutex: Sync + Send {
     fn lock(&self);
@@ -17,6 +17,19 @@ pub struct MutexBlocking {
 pub struct MutexBlockingInner {
     locked: bool,
     wait_queue: VecDeque<Arc<TaskControlBlock>>,
+}
+
+impl MutexBlocking {
+    pub fn new() -> Self {
+        Self {
+            inner: unsafe {
+                UPSafeCell::new(MutexBlockingInner {
+                    locked: false,
+                    wait_queue: VecDeque::new(),
+                })
+            },
+        }
+    }
 }
 
 impl Mutex for MutexBlocking {
@@ -41,5 +54,44 @@ impl Mutex for MutexBlocking {
         } else {
             inner.locked = false;
         }
+    }
+}
+
+pub struct MutexSpin {
+    inner: UPSafeCell<MutexSpinInner>,
+}
+
+pub struct MutexSpinInner {
+    locked: bool,
+}
+
+impl MutexSpin {
+    pub fn new() -> Self {
+        Self {
+            inner: unsafe {
+                UPSafeCell::new(MutexSpinInner {
+                    locked: false,
+                })
+            },
+        }
+    }
+}
+
+impl Mutex for MutexSpin {
+    fn lock(&self) {
+        loop {
+            let mut inner = self.inner.exclusive_access();
+            if inner.locked {
+                drop(inner);
+                suspend_current_and_run_next();
+                continue;
+            } else {
+                inner.locked = true;
+                return;
+            }
+        }
+    }
+    fn unlock(&self) {
+        self.inner.exclusive_access().locked = false;
     }
 }
