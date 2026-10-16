@@ -5,13 +5,13 @@ use crate::exit;
 pub fn panic(info: &PanicInfo) -> ! {
     if let Some(location) = info.location() {
         println!(
-            "[kernel] Panicked at {}:{} {}",
+            "[user] Panicked at {}:{} {}",
             location.file(),
             location.line(),
             info.message()
         );
     } else {
-        println!("[kernel] Panicked: {}", info.message());
+        println!("[user] Panicked: {}", info.message());
     }
     exit(-1);
 }
