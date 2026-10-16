@@ -152,6 +152,10 @@ impl TaskUserRes {
     pub fn get_ustack_base(&self) -> usize {
         self.ustack_base
     }
+
+    pub fn trap_cx_user_va(&self) -> usize {
+        trap_cx_bottom_from_tid(self.tid)
+    }
 }
 
 impl Drop for TaskUserRes {

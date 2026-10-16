@@ -22,7 +22,7 @@ use manager::pid2pcb_delmap;
 use manager::remove_task;
 pub use manager::{wakeup_task, pid2pcb};
 use process::ProcessControlBlock;
-pub use processor::{current_task, current_trap_cx, current_user_token, run_tasks};
+pub use processor::{current_task, current_trap_cx, current_user_token, run_tasks, current_trap_cx_user_va};
 use processor::{schedule, take_current_task};
 pub use signal::{SignalFlags};
 use switch::__switch;
